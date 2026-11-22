@@ -21,7 +21,9 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
-          fetch-depth: 1
+          # A complete object graph is required for an auditable PR range and
+          # for full-history scans on main and manual runs.
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Scan commit range or history
@@ -30,15 +32,26 @@ jobs:
           GITLEAKS_DIGEST: >-
             c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f
         run: |
+          set -euo pipefail
           image="${GITLEAKS_IMAGE}@sha256:${GITLEAKS_DIGEST}"
+          if [ "$(git rev-parse --is-shallow-repository)" != "false" ]; then
+            echo "::error::Gitleaks requires complete Git history; checkout is shallow."
+            exit 1
+          fi
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             base_sha="${{ github.event.pull_request.base.sha }}"
             head_sha="${{ github.event.pull_request.head.sha }}"
-            git fetch --no-tags origin "$base_sha" --depth=1
             git cat-file -e "${base_sha}^{commit}"
             git cat-file -e "${head_sha}^{commit}"
-            log_options="${base_sha}..${head_sha}"
+            if ! merge_base="$(git merge-base "$base_sha" "$head_sha")"; then
+              echo "::error::Cannot resolve a merge base for the pull request."
+              exit 1
+            fi
+            git cat-file -e "${merge_base}^{commit}"
+            git rev-list --objects "${merge_base}..${head_sha}" > /dev/null
+            log_options="${merge_base}..${head_sha}"
           else
+            git fsck --connectivity-only --no-dangling
             log_options="--all"
           fi
           docker run --rm --network none \

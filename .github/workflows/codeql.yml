@@ -32,7 +32,7 @@ jobs:
           cache: gradle
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@aaf92c3279600a7c7217a1cd605774c6c791c6c3
+        uses: github/codeql-action/init@800a1d8701a65d150a672fef0923dbf2660a62ec
         with:
           languages: java-kotlin
           build-mode: manual
@@ -42,6 +42,6 @@ jobs:
         run: ./gradlew classes :boleto-analytics-mcp:classes --no-daemon
 
       - name: Analyze source
-        uses: github/codeql-action/analyze@aaf92c3279600a7c7217a1cd605774c6c791c6c3
+        uses: github/codeql-action/analyze@800a1d8701a65d150a672fef0923dbf2660a62ec
         with:
           category: /language:java-kotlin
