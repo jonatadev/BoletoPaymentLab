@@ -1,0 +1,47 @@
+name: Gitleaks
+
+"on":
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    name: Scan committed history
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out source
+        # actions/checkout pinned by commit SHA
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Scan commit range or history
+        env:
+          GITLEAKS_IMAGE: ghcr.io/gitleaks/gitleaks:v8.30.1
+          GITLEAKS_DIGEST: >-
+            c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f
+        run: |
+          image="${GITLEAKS_IMAGE}@sha256:${GITLEAKS_DIGEST}"
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            base_sha="${{ github.event.pull_request.base.sha }}"
+            head_sha="${{ github.event.pull_request.head.sha }}"
+            git fetch --no-tags origin "$base_sha" --depth=1
+            git cat-file -e "${base_sha}^{commit}"
+            git cat-file -e "${head_sha}^{commit}"
+            log_options="${base_sha}..${head_sha}"
+          else
+            log_options="--all"
+          fi
+          docker run --rm --network none \
+            --mount "type=bind,source=${GITHUB_WORKSPACE},target=/repo,readonly" \
+            "$image" git --redact=100 --no-banner \
+            --log-opts="--full-history --diff-merges=first-parent $log_options" /repo
