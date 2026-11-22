@@ -1,0 +1,146 @@
+{
+  "realm": "boleto-lab",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "clientScopes": [
+    {
+      "name": "bpl-audience",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "false"
+      },
+      "protocolMappers": [
+        {
+          "name": "boleto-api audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "boleto-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        }
+      ]
+    },
+    {
+      "name": "boletos:issue",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true"
+      }
+    },
+    {
+      "name": "boletos:read",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true"
+      }
+    },
+    {
+      "name": "boletos:list",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true"
+      }
+    },
+    {
+      "name": "boletos:pay",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true"
+      }
+    },
+    {
+      "name": "boletos:cancel",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true"
+      }
+    },
+    {
+      "name": "boletos:audit",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true"
+      }
+    },
+    {
+      "name": "ops:metrics",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true"
+      }
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "boleto-issuer",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "defaultClientScopes": [
+        "bpl-audience",
+        "boletos:issue",
+        "boletos:read"
+      ],
+      "optionalClientScopes": [],
+      "clientAuthenticatorType": "client-secret",
+      "fullScopeAllowed": false
+    },
+    {
+      "clientId": "boleto-reader",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "defaultClientScopes": [
+        "bpl-audience",
+        "boletos:read",
+        "boletos:list"
+      ],
+      "optionalClientScopes": [],
+      "clientAuthenticatorType": "client-secret",
+      "fullScopeAllowed": false
+    },
+    {
+      "clientId": "boleto-operator",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "defaultClientScopes": [
+        "bpl-audience",
+        "boletos:pay",
+        "boletos:cancel",
+        "boletos:audit"
+      ],
+      "optionalClientScopes": [],
+      "clientAuthenticatorType": "client-secret",
+      "fullScopeAllowed": false
+    },
+    {
+      "clientId": "boleto-metrics",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "defaultClientScopes": [
+        "bpl-audience",
+        "ops:metrics"
+      ],
+      "optionalClientScopes": [],
+      "clientAuthenticatorType": "client-secret",
+      "fullScopeAllowed": false
+    }
+  ]
+}

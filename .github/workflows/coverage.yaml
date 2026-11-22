@@ -1,0 +1,46 @@
+name: Test coverage
+
+"on":
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  coverage:
+    name: Test and report coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Set up Java 25
+        uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: gradle
+
+      - name: Run tests and generate JaCoCo report
+        run: ./gradlew test jacocoTestReport --no-daemon
+
+      - name: Explain skipped Codecov upload
+        if: ${{ env.CODECOV_TOKEN == '' }}
+        run: echo "::notice::Codecov upload skipped because CODECOV_TOKEN is not configured."
+
+      - name: Upload JaCoCo XML to Codecov
+        if: ${{ env.CODECOV_TOKEN != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5
+        with:
+          files: build/reports/jacoco/test/jacocoTestReport.xml
+          fail_ci_if_error: true
+          token: ${{ env.CODECOV_TOKEN }}

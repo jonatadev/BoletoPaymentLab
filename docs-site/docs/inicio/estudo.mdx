@@ -1,0 +1,76 @@
+---
+title: Guia de estudo e glossário
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import {Comparison, Decision, Glossary, Steps} from '../../src/components/Study';
+
+## Da emissão ao evento
+
+<Steps items={[
+  'Acompanhe uma emissão nova e um replay com a mesma chave idempotente.',
+  'Localize a fronteira que grava boleto, associação, auditoria e Outbox.',
+  'Siga um evento do relay até o recibo do consumidor e compare os identificadores de correlação.',
+]} />
+
+Use o [diagrama de emissão](../arquitetura/idempotencia.md#fluxo-de-emissão)
+e consulte o [contrato de eventos](../referencia/eventos.md).
+
+<Decision adr="ADR 003" href="/decisoes/outbox">
+  O Outbox registra o evento junto com a alteração de negócio. O relay pode
+  tentar a publicação novamente após uma interrupção.
+</Decision>
+
+<Comparison rows={[
+  {option: 'Publicar diretamente no Kafka', tradeoff: 'A gravação no banco e o envio ao broker continuam em sistemas distintos. A operação teria que reconciliar falhas entre os dois.'},
+  {option: 'Transactional Outbox', tradeoff: 'A gravação do evento pendente participa da transação de negócio. A entrega pode se repetir e exige deduplicação.'},
+]} />
+
+## Exemplos por linguagem
+
+<Tabs groupId="linguagem" defaultValue="sql">
+<TabItem value="sql" label="SQL">
+
+```sql
+SELECT count(*) FROM boleto_outbox WHERE published_at IS NULL;
+```
+
+</TabItem>
+<TabItem value="java" label="Java">
+
+O consumidor chama `BoletoEventConsumer.receive(String message)`. O
+evento recebido é representado por `BoletoEvent` e o recibo usa
+`INSERT ... ON CONFLICT DO NOTHING`.
+
+</TabItem>
+<TabItem value="yaml" label="YAML">
+
+Trecho da configuração do consumidor Kafka.
+
+```yaml
+spring:
+  kafka:
+    listener:
+      ack-mode: record
+```
+
+</TabItem>
+<TabItem value="json" label="JSON">
+
+Veja o [exemplo completo do evento JSON](../referencia/eventos.md#contrato-vigente),
+incluindo a versão do contrato e a versão do agregado.
+
+</TabItem>
+</Tabs>
+
+## Glossário
+
+<Glossary terms={[
+  {name: 'Advisory lock', meaning: 'Bloqueio do PostgreSQL usado para coordenar emissões simultâneas no mesmo escopo.', href: '/arquitetura/idempotencia'},
+  {name: 'Idempotência', meaning: 'Repetir a emissão com o mesmo escopo e os mesmos dados retorna o registro já confirmado.', href: '/decisoes/idempotencia'},
+  {name: 'JWKS', meaning: 'Conjunto de chaves públicas que o resource server usa para validar assinaturas de JWT.', href: '/operacao/seguranca'},
+  {name: 'OTLP', meaning: 'Protocolo usado para exportar spans ao Jaeger.', href: '/operacao/observabilidade'},
+  {name: 'ProblemDetail', meaning: 'Formato HTTP que descreve falhas com código e detalhes para o cliente.', href: '/referencia/api#formato-de-erro'},
+  {name: 'Transactional Outbox', meaning: 'Registro persistente de eventos pendentes na mesma transação das alterações de negócio.', href: '/decisoes/outbox'},
+]} />

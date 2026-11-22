@@ -1,0 +1,8 @@
+bpl:
+  events:
+    enabled: ${BPL_EVENTS_ENABLED:true}
+
+management:
+  tracing:
+    export:
+      enabled: ${BPL_OTLP_ENABLED:true}

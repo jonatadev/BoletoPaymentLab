@@ -1,0 +1,30 @@
+---
+title: Explorador de Arquitetura
+description: Navegue pelos componentes e protocolos do Boleto Payment Lab
+hide_table_of_contents: true
+---
+
+import ArchitectureExplorer from '../../src/components/ArchitectureExplorer';
+
+Selecione um componente no mapa ou na lista ao lado para ver sua
+responsabilidade e abrir a documentação. As setas mostram dependências
+e integrações. O mapa descreve a arquitetura do laboratório, incluindo
+Kafka e Jaeger quando o perfil de plataforma está ativo.
+
+<ArchitectureExplorer />
+
+## Como ler o mapa
+
+- **HTTP e identidade.** O cliente obtém um token no Keycloak e envia o
+  Bearer JWT à API. O Spring Security usa as chaves JWKS do emissor.
+- **Persistência.** JPA e JDBC compartilham as transações de negócio no
+  PostgreSQL. O Envers grava revisões técnicas do boleto nessa mesma transação.
+  Veja [Auditoria e Histórico de Entidades](./auditoria.md). O PDF é gerado
+  em memória a partir de uma consulta.
+- **Mensageria.** O relay lê o Outbox e publica no Kafka. O consumidor
+  recebe do Kafka e registra o evento processado no PostgreSQL.
+- **Observabilidade.** A instrumentação exporta spans ao Jaeger por
+  OTLP/HTTP quando a exportação está habilitada.
+
+Veja [Arquitetura e pacotes](./visao-geral.md) e
+[Idempotência e concorrência](./idempotencia.md).

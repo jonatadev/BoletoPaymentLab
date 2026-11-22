@@ -1,0 +1,68 @@
+---
+title: Visão geral
+slug: /
+hide_title: true
+hide_table_of_contents: true
+description: Documentação técnica do Boleto Payment Lab
+---
+
+import Link from '@docusaurus/Link';
+
+<section className="bpl-intro">
+  <h1>Documentação técnica do Boleto Payment Lab</h1>
+  <p>Entenda como o laboratório emite boletos fictícios, protege a API,
+  registra mudanças de estado e entrega eventos ao Kafka.</p>
+  <div className="bpl-actions">
+    <Link className="button button--primary" to="/inicio/executar">Executar o laboratório</Link>
+    <Link className="button button--secondary" to="/arquitetura/explorador">Explorar a arquitetura</Link>
+  </div>
+</section>
+
+## Encontre a referência certa
+
+<div className="bpl-grid">
+  <Link className="bpl-card" to="/arquitetura/visao-geral">
+    <strong>Arquitetura</strong>
+    <span>Componentes, pacotes Java e limites transacionais.</span>
+  </Link>
+  <Link className="bpl-card" to="/referencia/api">
+    <strong>API REST</strong>
+    <span>Rotas, escopos JWT e exemplos de respostas.</span>
+  </Link>
+  <Link className="bpl-card" to="/arquitetura/idempotencia">
+    <strong>Idempotência</strong>
+    <span>Repetições, conflitos e concorrência no PostgreSQL.</span>
+  </Link>
+  <Link className="bpl-card" to="/referencia/eventos">
+    <strong>Kafka e Outbox</strong>
+    <span>Contrato JSON, retentativas e deduplicação.</span>
+  </Link>
+  <Link className="bpl-card" to="/operacao/dados">
+    <strong>Banco de dados</strong>
+    <span>Modelo relacional, restrições e migrações Flyway.</span>
+  </Link>
+  <Link className="bpl-card" to="/operacao/seguranca">
+    <strong>Segurança</strong>
+    <span>Keycloak, JWT e permissões por rota.</span>
+  </Link>
+  <Link className="bpl-card" to="/operacao/observabilidade">
+    <strong>Observabilidade</strong>
+    <span>Como correlacionar logs, métricas e traces no Jaeger.</span>
+  </Link>
+  <Link className="bpl-card" to="/decisoes">
+    <strong>Decisões arquiteturais</strong>
+    <span>Motivações, consequências e propostas em avaliação.</span>
+  </Link>
+  <Link className="bpl-card" to="/inicio/estudo">
+    <strong>Guia de estudo</strong>
+    <span>Roteiro, exemplos por linguagem e glossário.</span>
+  </Link>
+  <Link className="bpl-card" to="/roadmap">
+    <strong>Roadmap</strong>
+    <span>Propostas ainda em avaliação.</span>
+  </Link>
+</div>
+
+O projeto usa dados sintéticos. Os PDFs gerados são documentos educacionais
+sem validade para pagamento. A seção [Roadmap](./roadmap.md) concentra as
+propostas, incluindo Avro e Schema Registry.

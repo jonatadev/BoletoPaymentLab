@@ -1,0 +1,32 @@
+{
+  "theme.SearchBar.label": {
+    "message": "Pesquisar"
+  },
+  "theme.SearchBar.noResultsText": {
+    "message": "Nenhum resultado"
+  },
+  "theme.SearchBar.seeAll": {
+    "message": "Ver todos os resultados"
+  },
+  "theme.SearchBar.seeAllOutsideContext": {
+    "message": "Ver resultados fora de \"{context}\""
+  },
+  "theme.SearchBar.searchInContext": {
+    "message": "Ver resultados em \"{context}\""
+  },
+  "theme.SearchPage.existingResultsTitle": {
+    "message": "Resultados para \"{query}\""
+  },
+  "theme.SearchPage.emptyResultsTitle": {
+    "message": "Pesquisar na documentação"
+  },
+  "theme.SearchPage.searchContext.everywhere": {
+    "message": "Todo o portal"
+  },
+  "theme.SearchPage.documentsFound.plurals": {
+    "message": "{count} documento encontrado|{count} documentos encontrados|{count} documentos encontrados"
+  },
+  "theme.SearchPage.noResultsText": {
+    "message": "Nenhum documento encontrado"
+  }
+}

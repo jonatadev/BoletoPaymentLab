@@ -1,0 +1,7 @@
+.env
+.git
+.gradle
+build
+docs-site/node_modules
+docs-site/build
+src/main/resources/application-local.yaml

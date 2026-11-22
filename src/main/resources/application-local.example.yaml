@@ -1,0 +1,19 @@
+# Copy to application-local.yaml for local development.
+# Replace the username and password placeholders with the values for the
+# PostgreSQL role initialized in the local volume.
+server:
+  address: 127.0.0.1
+
+spring:
+  datasource:
+    url: jdbc:postgresql://127.0.0.1:5434/boleto_lab
+    username: ${BPL_DB_USERNAME}
+    password: ${BPL_DB_PASSWORD}
+  flyway:
+    enabled: true
+  jpa:
+    hibernate:
+      ddl-auto: none
+  h2:
+    console:
+      enabled: false

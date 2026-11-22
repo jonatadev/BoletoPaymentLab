@@ -1,0 +1,174 @@
+package org.example.samplemicroservice.boleto.events;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import io.micrometer.core.instrument.MeterRegistry;
+import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.function.BooleanSupplier;
+import org.example.samplemicroservice.boleto.application.BoletoLifecycle;
+import org.example.samplemicroservice.boleto.application.BoletoService;
+import org.example.samplemicroservice.boleto.application.IssuanceInput;
+import org.example.samplemicroservice.boleto.domain.BoletoStatus;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
+import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
+import tools.jackson.databind.ObjectMapper;
+
+@SpringBootTest
+@EnabledIfEnvironmentVariable(named = "BPL_IT_DB_URL", matches = ".+")
+@Import(BoletoEventsPostgresTests.TestBeans.class)
+class BoletoEventsPostgresTests {
+    private static final String RUN = UUID.randomUUID().toString().replace("-", "");
+    private static final String SCHEMA = "bpl_it_" + RUN;
+    private static final String KAFKA = System.getenv("BPL_IT_KAFKA_BOOTSTRAP");
+
+    @Autowired private BoletoService service;
+    @Autowired private BoletoLifecycle lifecycle;
+    @Autowired private OutboxRelay relay;
+    @Autowired private BoletoEventConsumer consumer;
+    @Autowired private ControlledTransport transport;
+    @Autowired private JdbcClient jdbc;
+    @Autowired private Clock clock;
+    @Autowired private ObjectMapper json;
+    @Autowired private MeterRegistry meters;
+    @Autowired private PlatformTransactionManager transactions;
+
+    @DynamicPropertySource
+    static void integration(DynamicPropertyRegistry properties) {
+        String url = System.getenv("BPL_IT_DB_URL");
+        properties.add("spring.datasource.url", () -> url + (url.contains("?") ? "&" : "?") + "currentSchema=" + SCHEMA);
+        properties.add("spring.datasource.username", () -> System.getenv("BPL_IT_DB_USERNAME"));
+        properties.add("spring.datasource.password", () -> System.getenv("BPL_IT_DB_PASSWORD"));
+        properties.add("spring.flyway.schemas", () -> SCHEMA);
+        properties.add("spring.jpa.properties.hibernate.default_schema", () -> SCHEMA);
+        properties.add("bpl.events.enabled", () -> KAFKA != null);
+        properties.add("bpl.events.poll-delay", () -> "1h");
+        properties.add("bpl.events.topic", () -> "boleto-it-" + RUN);
+        properties.add("spring.kafka.consumer.group-id", () -> "boleto-it-" + RUN);
+        if (KAFKA != null) {
+            properties.add("spring.kafka.bootstrap-servers", () -> KAFKA);
+        }
+    }
+
+    @Test
+    void shouldRecoverPendingEventsAfterTransportFailureAndDeduplicateDelivery() throws Exception {
+        var original = service.issue("outbox-test", new IssuanceInput(
+                "customer-outbox", new BigDecimal("12.34"), LocalDate.now(clock).plusDays(1))).boleto();
+        lifecycle.change(original.id(), BoletoStatus.PAGO);
+        assertThat(relay.processOne()).isFalse();
+        assertThat(jdbc.sql("select count(*) from boleto_outbox where published_at is null")
+                .query(Integer.class).single()).isEqualTo(2);
+        assertThat(jdbc.sql("select attempts from boleto_outbox where event_type = 'BOLETO_ISSUED'")
+                .query(Integer.class).single()).isEqualTo(1);
+        jdbc.sql("update boleto_outbox set next_attempt_at = :due")
+                .param("due", clock.instant().minusSeconds(1).atOffset(ZoneOffset.UTC)).update();
+        assertThat(relay.processOne()).isTrue();
+        assertThat(relay.processOne()).isTrue();
+        assertThat(transport.sent).extracting(BoletoEvent::eventType).containsExactly("BOLETO_ISSUED", "BOLETO_PAID");
+        assertThat(jdbc.sql("select count(*) from boleto_outbox where published_at is not null")
+                .query(Integer.class).single()).isEqualTo(2);
+        var event = transport.sent.getFirst();
+        if (KAFKA != null) {
+            await(() -> receipts(event.eventId()) == 1);
+            transport.delegate.publish(event, null);
+            await(() -> meters.find("bpl.events.duplicates").counter() != null);
+        } else {
+            consumer.receive(json.writeValueAsString(event));
+            consumer.receive(json.writeValueAsString(event));
+        }
+        assertThat(receipts(event.eventId())).isEqualTo(1);
+        assertThat(meters.counter("bpl.events.duplicates").count()).isEqualTo(1);
+
+        var held = service.issue("outbox-held", new IssuanceInput(
+                "customer-held", new BigDecimal("2.00"), LocalDate.now(clock).plusDays(1))).boleto();
+        var free = service.issue("outbox-free", new IssuanceInput(
+                "customer-free", new BigDecimal("3.00"), LocalDate.now(clock).plusDays(1))).boleto();
+        var locked = new CountDownLatch(1);
+        var release = new CountDownLatch(1);
+        var worker = CompletableFuture.runAsync(() -> new TransactionTemplate(transactions).executeWithoutResult(tx -> {
+            jdbc.sql("select event_id from boleto_outbox where aggregate_id = :id for update")
+                    .param("id", held.id()).query(UUID.class).single();
+            locked.countDown();
+            try {
+                if (!release.await(15, TimeUnit.SECONDS)) {
+                    throw new AssertionError("Timed out waiting for the competing relay");
+                }
+            } catch (InterruptedException exception) {
+                Thread.currentThread().interrupt();
+                throw new AssertionError(exception);
+            }
+        }));
+        try {
+            assertThat(locked.await(10, TimeUnit.SECONDS)).isTrue();
+            assertThat(relay.processOne()).isTrue();
+            assertThat(transport.sent.getLast().aggregateId()).isEqualTo(free.id());
+        } finally {
+            release.countDown();
+        }
+        worker.get(10, TimeUnit.SECONDS);
+        assertThat(relay.processOne()).isTrue();
+        assertThat(transport.sent.getLast().aggregateId()).isEqualTo(held.id());
+    }
+
+    private int receipts(UUID eventId) {
+        return jdbc.sql("select count(*) from processed_boleto_event where event_id = :id")
+                .param("id", eventId).query(Integer.class).single();
+    }
+
+    private void await(BooleanSupplier condition) throws InterruptedException {
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(20);
+        while (!condition.getAsBoolean() && System.nanoTime() < deadline) {
+            Thread.sleep(50);
+        }
+        assertThat(condition.getAsBoolean()).isTrue();
+    }
+
+    @TestConfiguration(proxyBeanMethods = false)
+    static class TestBeans {
+        @Bean @Primary
+        ControlledTransport controlledTransport(KafkaOutboxTransport delegate) {
+            return new ControlledTransport(delegate);
+        }
+    }
+
+    static class ControlledTransport implements OutboxTransport {
+        private final KafkaOutboxTransport delegate;
+        private final List<BoletoEvent> sent = new ArrayList<>();
+        private boolean fail = true;
+
+        ControlledTransport(KafkaOutboxTransport delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public void publish(BoletoEvent event, String traceparent) throws PublishFailure {
+            if (fail) {
+                fail = false;
+                throw new PublishFailure();
+            }
+            if (KAFKA != null) {
+                delegate.publish(event, traceparent);
+            }
+            sent.add(event);
+        }
+    }
+}

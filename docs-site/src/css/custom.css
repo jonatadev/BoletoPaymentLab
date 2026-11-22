@@ -1,0 +1,196 @@
+/* Color and spacing stay on the Infima theme tokens so both modes inherit them. */
+:root {
+  --ifm-color-primary: #0d5f6b;
+  --ifm-color-primary-dark: #0b5560;
+  --ifm-color-primary-darker: #0a505b;
+  --ifm-color-primary-darkest: #08424a;
+  --ifm-color-primary-light: #126d7a;
+  --ifm-color-primary-lighter: #137582;
+  --ifm-color-primary-lightest: #188999;
+  --ifm-background-color: #f9fbfc;
+  --ifm-navbar-background-color: #fff;
+  --ifm-navbar-shadow: 0 1px 0 #dbe5e9;
+  --ifm-heading-color: #152a39;
+  --ifm-font-family-base: "Segoe UI", system-ui, sans-serif;
+  --ifm-font-size-base: 16px;
+  --ifm-code-font-size: 90%;
+  --bpl-panel: #fff;
+  --bpl-border: #d9e5e9;
+  --bpl-banner-start: #e7f5f4;
+  --bpl-banner-end: #eaf0fa;
+  --bpl-text-muted: #405767;
+  --bpl-button-label: #fff;
+}
+
+[data-theme='dark'] {
+  --ifm-color-primary: #75dcd6;
+  --ifm-color-primary-dark: #5acbc5;
+  --ifm-color-primary-darker: #54c5bf;
+  --ifm-color-primary-darkest: #439f9c;
+  --ifm-color-primary-light: #8ce4df;
+  --ifm-color-primary-lighter: #99e8e3;
+  --ifm-color-primary-lightest: #b0f1eb;
+  --ifm-background-color: #111b24;
+  --ifm-navbar-background-color: #14212c;
+  --ifm-navbar-shadow: 0 1px 0 #2b3c48;
+  --ifm-heading-color: #eef7fa;
+  --bpl-panel: #16242f;
+  --bpl-border: #2c4653;
+  --bpl-banner-start: #15343a;
+  --bpl-banner-end: #202f49;
+  --bpl-text-muted: #beced6;
+  --bpl-button-label: #10242b;
+}
+
+.navbar__title {
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+
+.theme-doc-sidebar-container {
+  background: var(--bpl-panel);
+}
+
+.bpl-intro {
+  margin-bottom: 2rem;
+  padding: clamp(1.25rem, 4vw, 3rem);
+  border-radius: 1rem;
+  border: 1px solid var(--bpl-border);
+  background: linear-gradient(125deg, var(--bpl-banner-start), var(--bpl-banner-end));
+}
+
+.bpl-intro h1 {
+  font-size: clamp(2rem, 5vw, 3.25rem);
+  line-height: 1.05;
+  letter-spacing: -0.04em;
+  max-width: 21ch;
+}
+
+.bpl-intro p {
+  max-width: 58ch;
+  color: var(--bpl-text-muted);
+}
+
+.bpl-intro .button {
+  color: var(--bpl-button-label);
+  margin-top: 0.35rem;
+  white-space: normal;
+}
+
+.bpl-intro .button p {
+  color: inherit;
+  margin: 0;
+}
+
+.bpl-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 17.5rem), 1fr));
+  gap: 0.85rem;
+  margin: 0.5rem 0 2rem;
+}
+
+.bpl-card {
+  display: block;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--bpl-border);
+  border-radius: 0.75rem;
+  background: var(--bpl-panel);
+  color: var(--ifm-heading-color);
+}
+
+.bpl-card:hover,
+.bpl-card:focus-visible {
+  border-color: var(--ifm-color-primary);
+  color: var(--ifm-heading-color);
+  text-decoration: none;
+}
+
+.bpl-card strong {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: var(--ifm-color-primary);
+}
+
+.bpl-card span {
+  color: var(--bpl-text-muted);
+}
+
+.bpl-diagram, .bpl-image, .bpl-map, .bpl-map-detail {
+  min-width: 0;
+  border: 1px solid var(--bpl-border);
+  border-radius: .8rem;
+  background: var(--bpl-panel);
+}
+.bpl-diagram { margin: 1.25rem 0; padding: .65rem; }
+.bpl-tools, .bpl-dialog-heading, .bpl-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .45rem;
+}
+.bpl-tools { margin-bottom: .65rem; }
+.bpl-tools button, .bpl-dialog-heading button, .bpl-map-detail select {
+  color: var(--ifm-heading-color);
+  background: var(--bpl-panel);
+  border: 1px solid var(--bpl-border);
+  border-radius: .4rem;
+  min-height: 2.75rem;
+  padding: .35rem .65rem;
+  font: inherit;
+}
+.bpl-tools button:not(:disabled), .bpl-dialog-heading button { cursor: pointer; }
+.bpl-tools output { min-width: 3.4rem; text-align: center; font-variant-numeric: tabular-nums; }
+.bpl-tools button:disabled { opacity: .5; }
+.bpl-diagram-viewport {
+  overflow: auto;
+  max-height: min(60vh, 40rem);
+  border: 1px solid var(--bpl-border);
+  border-radius: .45rem;
+  cursor: grab;
+  padding: .4rem;
+}
+.bpl-diagram-viewport:active { cursor: grabbing; }
+.bpl-diagram-canvas svg { display: block; width: 100% !important; height: auto; max-width: none !important; }
+.bpl-figure-help { margin: .55rem 0 0; color: var(--bpl-text-muted); font-size: .85rem; }
+.bpl-diagram-caption { margin-top: .5rem; color: var(--bpl-text-muted); font-size: .9rem; }
+.bpl-dialog {
+  width: min(94vw, 82rem);
+  max-width: none;
+  padding: 1rem;
+  border: 1px solid var(--bpl-border);
+  border-radius: .8rem;
+  background: var(--bpl-panel);
+  color: var(--ifm-font-color-base);
+}
+.bpl-dialog::backdrop { background: rgb(8 15 25 / 75%); }
+.bpl-dialog-heading { justify-content: space-between; margin-bottom: .65rem; }
+.bpl-dialog .bpl-diagram-viewport { max-height: 70vh; }
+.bpl-explorer { display: grid; grid-template-columns: minmax(0, 1fr) minmax(10rem, 14rem); gap: .8rem; margin: 1rem 0 2rem; }
+.bpl-map { height: clamp(23rem, 55vh, 34rem); overflow: hidden; }
+.bpl-map .react-flow__node {
+  width: 160px;
+  text-align: start;
+  border-inline-start-width: 5px;
+}
+.bpl-map .react-flow__node span { display: block; font-size: .8rem; }
+.bpl-map .react-flow__node strong { display: block; font-size: 1.05rem; }
+.bpl-map .react-flow__minimap { width: 105px; height: 75px; }
+.bpl-map-detail { padding: .85rem; }
+.bpl-map-detail label { display: block; font-weight: 650; }
+.bpl-map-detail select { width: 100%; margin: .4rem 0 1rem; }
+.bpl-image-grid { display: grid; gap: .75rem; }
+.bpl-image { margin: .65rem 0; padding: .65rem; }
+.bpl-image button { display: block; padding: 0; background: none; border: 0; cursor: zoom-in; margin: auto; }
+.bpl-image img { display: block; max-width: 100%; height: auto; border-radius: .45rem; }
+.bpl-image figcaption { margin-top: .55rem; color: var(--bpl-text-muted); }
+.bpl-table-scroll { overflow-x: auto; }
+.bpl-glossary dt { font-weight: 700; }
+.bpl-glossary dd { margin: 0 0 .85rem; }
+.bpl-steps li + li { margin-top: .45rem; }
+.bpl-diagram :focus-visible, .bpl-dialog :focus-visible, .bpl-explorer :focus-visible, .bpl-image :focus-visible {
+  outline: 2px solid var(--ifm-color-primary);
+  outline-offset: 2px;
+}
+@media (max-width: 767px) {
+  .bpl-explorer { grid-template-columns: 1fr; }
+}

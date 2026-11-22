@@ -1,0 +1,119 @@
+server:
+  address: 127.0.0.1
+  shutdown: graceful
+  max-http-request-header-size: 16KB
+  tomcat:
+    connection-timeout: 5s
+    threads:
+      max: 32
+
+spring:
+  application:
+    name: BoletoPaymentLab
+  lifecycle:
+    timeout-per-shutdown-phase: 15s
+  task:
+    scheduling:
+      pool:
+        size: 2
+  kafka:
+    bootstrap-servers: ${BPL_KAFKA_BOOTSTRAP:127.0.0.1:9092}
+    producer:
+      acks: all
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      properties:
+        "[enable.idempotence]": true
+        "[max.block.ms]": 2000
+        "[request.timeout.ms]": 2500
+        "[delivery.timeout.ms]": 5000
+    consumer:
+      group-id: ${BPL_KAFKA_GROUP:boleto-lab-educational}
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    listener:
+      ack-mode: record
+      observation-enabled: true
+    admin:
+      operation-timeout: 5s
+  datasource:
+    hikari:
+      connection-timeout: 3000
+      maximum-pool-size: 10
+      data-source-properties:
+        connectTimeout: 3
+        socketTimeout: 10
+  jackson:
+    deserialization:
+      use-big-decimal-for-floats: true
+      fail-on-reading-dup-tree-key: true
+  flyway:
+    locations: "classpath:db/migration,classpath:db/vendor/{vendor}"
+  jpa:
+    open-in-view: false
+    properties:
+      "[org.hibernate.envers.do_not_audit_optimistic_locking_field]": false
+    hibernate:
+      ddl-auto: validate
+
+logging:
+  level:
+    org.hibernate.engine.jdbc.spi.SqlExceptionHelper: "OFF"
+    org.hibernate.orm.jdbc.error: "OFF"
+  structured:
+    format:
+      console: ecs
+
+bpl:
+  events:
+    enabled: ${BPL_EVENTS_ENABLED:false}
+    topic: ${BPL_KAFKA_TOPIC:boleto.lifecycle.v1}
+    poll-delay: 1s
+  expiry:
+    enabled: ${BPL_EXPIRY_ENABLED:true}
+    delay: 60s
+  security:
+    issuer: ${BPL_OIDC_ISSUER:http://127.0.0.1:8180/realms/boleto-lab}
+    jwks: ${BPL_OIDC_JWKS:${bpl.security.issuer}/protocol/openid-connect/certs}
+    audience: ${BPL_OIDC_AUDIENCE:boleto-api}
+
+management:
+  otlp:
+    metrics:
+      export:
+        enabled: false
+  endpoints:
+    access:
+      default: none
+    web:
+      exposure:
+        include: health,metrics
+  endpoint:
+    metrics:
+      access: read-only
+    health:
+      access: read-only
+      show-details: never
+      probes:
+        enabled: true
+      group:
+        readiness:
+          include: readinessState,db
+  tracing:
+    propagation:
+      type: w3c
+    sampling:
+      probability: ${BPL_TRACE_SAMPLE:1.0}
+    export:
+      enabled: ${BPL_OTLP_ENABLED:false}
+    baggage:
+      enabled: false
+  opentelemetry:
+    tracing:
+      export:
+        otlp:
+          endpoint: ${BPL_OTLP_ENDPOINT:http://127.0.0.1:4318/v1/traces}
+          timeout: 2s
+          connect-timeout: 1s
