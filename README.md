@@ -16,6 +16,8 @@ The [Docusaurus portal](docs-site/README.md) documents the API, architecture,
 operations and decisions in Brazilian Portuguese. With Node.js 22 or newer,
 run `npm --prefix docs-site ci` and `npm --prefix docs-site start`.
 Use `npm --prefix docs-site run build` to generate the static site.
+After the first successful GitHub Pages deployment, it is available at
+[jonatadev.github.io/BoletoPaymentLab](https://jonatadev.github.io/BoletoPaymentLab/).
 
 ## Start PostgreSQL
 

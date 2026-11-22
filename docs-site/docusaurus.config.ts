@@ -3,11 +3,13 @@ import type {Config} from '@docusaurus/types';
 const config: Config = {
   title: 'Boleto Payment Lab',
   tagline: 'Documentação técnica do laboratório educacional de boletos',
-  url: 'http://127.0.0.1:3000',
-  baseUrl: '/',
+  url: 'https://jonatadev.github.io',
+  baseUrl: '/BoletoPaymentLab/',
+  organizationName: 'jonatadev',
+  projectName: 'BoletoPaymentLab',
   favicon: 'img/favicon.png',
   trailingSlash: false,
-  noIndex: true,
+  noIndex: false,
   clientModules: ['./src/mermaid-transitions.js'],
   onBrokenLinks: 'throw',
   i18n: {
