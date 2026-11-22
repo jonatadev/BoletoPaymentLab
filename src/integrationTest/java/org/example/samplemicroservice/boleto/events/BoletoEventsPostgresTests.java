@@ -1,10 +1,12 @@
 package org.example.samplemicroservice.boleto.events;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import java.math.BigDecimal;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -13,13 +15,12 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.function.BooleanSupplier;
+import org.example.samplemicroservice.boleto.PostgresIntegrationTest;
 import org.example.samplemicroservice.boleto.application.BoletoLifecycle;
 import org.example.samplemicroservice.boleto.application.BoletoService;
 import org.example.samplemicroservice.boleto.application.IssuanceInput;
 import org.example.samplemicroservice.boleto.domain.BoletoStatus;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -31,15 +32,22 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.testcontainers.kafka.KafkaContainer;
+import org.testcontainers.utility.DockerImageName;
 import tools.jackson.databind.ObjectMapper;
 
 @SpringBootTest
-@EnabledIfEnvironmentVariable(named = "BPL_IT_DB_URL", matches = ".+")
 @Import(BoletoEventsPostgresTests.TestBeans.class)
-class BoletoEventsPostgresTests {
+class BoletoEventsPostgresTests extends PostgresIntegrationTest {
     private static final String RUN = UUID.randomUUID().toString().replace("-", "");
     private static final String SCHEMA = "bpl_it_" + RUN;
-    private static final String KAFKA = System.getenv("BPL_IT_KAFKA_BOOTSTRAP");
+    private static final KafkaContainer KAFKA =
+            new KafkaContainer(DockerImageName.parse("apache/kafka:3.9.1"));
+
+    static {
+        KAFKA.start();
+        Runtime.getRuntime().addShutdownHook(new Thread(KAFKA::stop, "kafka-integration-test-stop"));
+    }
 
     @Autowired private BoletoService service;
     @Autowired private BoletoLifecycle lifecycle;
@@ -54,19 +62,16 @@ class BoletoEventsPostgresTests {
 
     @DynamicPropertySource
     static void integration(DynamicPropertyRegistry properties) {
-        String url = System.getenv("BPL_IT_DB_URL");
-        properties.add("spring.datasource.url", () -> url + (url.contains("?") ? "&" : "?") + "currentSchema=" + SCHEMA);
-        properties.add("spring.datasource.username", () -> System.getenv("BPL_IT_DB_USERNAME"));
-        properties.add("spring.datasource.password", () -> System.getenv("BPL_IT_DB_PASSWORD"));
+        properties.add("spring.datasource.url", () -> postgresUrl(SCHEMA));
+        properties.add("spring.datasource.username", PostgresIntegrationTest::postgresUser);
+        properties.add("spring.datasource.password", PostgresIntegrationTest::postgresPassword);
         properties.add("spring.flyway.schemas", () -> SCHEMA);
         properties.add("spring.jpa.properties.hibernate.default_schema", () -> SCHEMA);
-        properties.add("bpl.events.enabled", () -> KAFKA != null);
+        properties.add("bpl.events.enabled", () -> true);
         properties.add("bpl.events.poll-delay", () -> "1h");
         properties.add("bpl.events.topic", () -> "boleto-it-" + RUN);
         properties.add("spring.kafka.consumer.group-id", () -> "boleto-it-" + RUN);
-        if (KAFKA != null) {
-            properties.add("spring.kafka.bootstrap-servers", () -> KAFKA);
-        }
+        properties.add("spring.kafka.bootstrap-servers", KAFKA::getBootstrapServers);
     }
 
     @Test
@@ -87,14 +92,11 @@ class BoletoEventsPostgresTests {
         assertThat(jdbc.sql("select count(*) from boleto_outbox where published_at is not null")
                 .query(Integer.class).single()).isEqualTo(2);
         var event = transport.sent.getFirst();
-        if (KAFKA != null) {
-            await(() -> receipts(event.eventId()) == 1);
-            transport.delegate.publish(event, null);
-            await(() -> meters.find("bpl.events.duplicates").counter() != null);
-        } else {
-            consumer.receive(json.writeValueAsString(event));
-            consumer.receive(json.writeValueAsString(event));
-        }
+        await().atMost(Duration.ofSeconds(20)).untilAsserted(() ->
+                assertThat(receipts(event.eventId())).isEqualTo(1));
+        transport.delegate.publish(event, null);
+        await().atMost(Duration.ofSeconds(20)).untilAsserted(() ->
+                assertThat(meters.counter("bpl.events.duplicates").count()).isEqualTo(1));
         assertThat(receipts(event.eventId())).isEqualTo(1);
         assertThat(meters.counter("bpl.events.duplicates").count()).isEqualTo(1);
 
@@ -134,14 +136,6 @@ class BoletoEventsPostgresTests {
                 .param("id", eventId).query(Integer.class).single();
     }
 
-    private void await(BooleanSupplier condition) throws InterruptedException {
-        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(20);
-        while (!condition.getAsBoolean() && System.nanoTime() < deadline) {
-            Thread.sleep(50);
-        }
-        assertThat(condition.getAsBoolean()).isTrue();
-    }
-
     @TestConfiguration(proxyBeanMethods = false)
     static class TestBeans {
         @Bean @Primary
@@ -165,9 +159,7 @@ class BoletoEventsPostgresTests {
                 fail = false;
                 throw new PublishFailure();
             }
-            if (KAFKA != null) {
-                delegate.publish(event, traceparent);
-            }
+            delegate.publish(event, traceparent);
             sent.add(event);
         }
     }

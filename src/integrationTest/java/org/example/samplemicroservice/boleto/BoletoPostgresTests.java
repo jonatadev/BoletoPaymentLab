@@ -2,6 +2,7 @@ package org.example.samplemicroservice.boleto;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.awaitility.Awaitility.await;
 
 import java.io.IOException;
 import java.net.URI;
@@ -50,9 +51,8 @@ import tools.jackson.databind.ObjectMapper;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(BoletoPostgresTests.TestBeans.class)
-@EnabledIfEnvironmentVariable(named = "BPL_IT_DB_URL", matches = ".+")
 @ExtendWith(OutputCaptureExtension.class)
-class BoletoPostgresTests {
+class BoletoPostgresTests extends PostgresIntegrationTest {
     private static final String SCHEMA = "bpl_it_" + UUID.randomUUID().toString().replace("-", "");
     private static final Instant ISSUE_TIME = Instant.parse("2026-01-02T01:30:00Z");
     private static final LocalDate DUE_DATE = LocalDate.parse("2026-01-03");
@@ -73,10 +73,9 @@ class BoletoPostgresTests {
         allPermissions = identity.token(
                 "boletos:issue boletos:read boletos:list boletos:pay boletos:cancel boletos:audit ops:metrics",
                 "boleto-api");
-        String url = System.getenv("BPL_IT_DB_URL");
-        properties.add("spring.datasource.url", () -> url + (url.contains("?") ? "&" : "?") + "currentSchema=" + SCHEMA);
-        properties.add("spring.datasource.username", () -> System.getenv("BPL_IT_DB_USERNAME"));
-        properties.add("spring.datasource.password", () -> System.getenv("BPL_IT_DB_PASSWORD"));
+        properties.add("spring.datasource.url", () -> postgresUrl(SCHEMA));
+        properties.add("spring.datasource.username", PostgresIntegrationTest::postgresUser);
+        properties.add("spring.datasource.password", PostgresIntegrationTest::postgresPassword);
         properties.add("spring.flyway.schemas", () -> SCHEMA);
         properties.add("spring.jpa.properties.hibernate.default_schema", () -> SCHEMA);
         properties.add("bpl.security.issuer", () -> IntegrationIdentity.ISSUER);
@@ -436,11 +435,8 @@ class BoletoPostgresTests {
         assertThat(reply.statusCode()).isEqualTo(200);
         assertThat(reply.headers().firstValue("X-Trace-Id")).contains(trace);
         assertThat(output.getOut()).contains(trace, "spanId", "Boleto request completed");
-        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(12);
-        while (identity.failedExports.get() <= previousFailures && System.nanoTime() < deadline) {
-            Thread.sleep(50);
-        }
-        assertThat(identity.failedExports.get()).isGreaterThan(previousFailures);
+        await().atMost(Duration.ofSeconds(12)).untilAsserted(() ->
+                assertThat(identity.failedExports.get()).isGreaterThan(previousFailures));
         assertThat(get("").statusCode()).isEqualTo(200);
     }
 
@@ -457,15 +453,11 @@ class BoletoPostgresTests {
             assertThat(response.headers().firstValue("X-Trace-Id")).contains(trace);
             var lookup = HttpRequest.newBuilder(URI.create(System.getenv("BPL_IT_JAEGER_QUERY")
                     + "/api/traces/" + trace)).timeout(Duration.ofSeconds(3)).GET().build();
-            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(20);
-            do {
+            await().atMost(Duration.ofSeconds(20)).pollInterval(Duration.ofMillis(100)).untilAsserted(() -> {
                 var exported = client.send(lookup, HttpResponse.BodyHandlers.ofString());
-                if (exported.statusCode() == 200 && exported.body().contains(trace)) {
-                    return;
-                }
-                Thread.sleep(100);
-            } while (System.nanoTime() < deadline);
-            throw new AssertionError("Jaeger did not return the request trace");
+                assertThat(exported.statusCode()).isEqualTo(200);
+                assertThat(exported.body()).contains(trace);
+            });
         } finally {
             identity.forwardTracesTo = null;
         }

@@ -24,6 +24,32 @@ services:
       jaeger:
         condition: service_started
 
+  boleto-analytics-mcp:
+    profiles: ["mcp"]
+    build:
+      context: .
+      dockerfile: boleto-analytics-mcp/Dockerfile
+    image: boleto-analytics-mcp:local
+    environment:
+      MCP_SERVER_ADDRESS: 0.0.0.0
+      MCP_SERVER_PORT: 8090
+      MCP_DATABASE_URL: "jdbc:postgresql://postgres:5432/${POSTGRES_DB:?Set POSTGRES_DB in .env}"
+      MCP_DATABASE_USERNAME: ${MCP_DATABASE_USERNAME:?Set MCP_DATABASE_USERNAME in .env}
+      MCP_DATABASE_PASSWORD: ${MCP_DATABASE_PASSWORD:?Set MCP_DATABASE_PASSWORD in .env}
+      MCP_AUTH_ISSUER: http://keycloak:8080/realms/boleto-lab
+      MCP_AUTH_AUDIENCE: boleto-analytics-mcp
+    ports:
+      - "127.0.0.1:${MCP_SERVER_PORT:-8090}:8090"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    mem_limit: 384m
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://127.0.0.1:8090/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
   postgres:
     image: postgres:17.12-bookworm
     environment:

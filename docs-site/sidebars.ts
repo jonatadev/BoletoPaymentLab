@@ -7,7 +7,7 @@ const sidebars: SidebarsConfig = {
       type: 'category',
       label: 'Começar',
       collapsed: false,
-      items: ['inicio/executar', 'inicio/estudo', 'inicio/testes', 'inicio/cobertura', 'inicio/sdd'],
+      items: ['inicio/executar', 'inicio/estudo', 'inicio/testes', 'inicio/arquitetura-de-testes', 'inicio/cobertura', 'inicio/sdd'],
     },
     {
       type: 'category',
@@ -24,7 +24,7 @@ const sidebars: SidebarsConfig = {
     {
       type: 'category',
       label: 'Operação',
-      items: ['operacao/docker', 'operacao/dados', 'operacao/seguranca', 'operacao/configuracao-segura', 'operacao/observabilidade'],
+      items: ['operacao/docker', 'operacao/dados', 'operacao/seguranca', 'operacao/configuracao-segura', 'operacao/observabilidade', 'operacao/mcp-analytics'],
     },
     {
       type: 'category',

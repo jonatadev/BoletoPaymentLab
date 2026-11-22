@@ -7,18 +7,16 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.UUID;
+import org.example.samplemicroservice.boleto.PostgresIntegrationTest;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.FlywayException;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
-@EnabledIfEnvironmentVariable(named = "BPL_IT_DB_URL", matches = ".+")
-class OutboxAuditMigrationTests {
+class OutboxAuditMigrationTests extends PostgresIntegrationTest {
     private final String schema = "bpl_it_" + UUID.randomUUID().toString().replace("-", "");
-    private final String baseUrl = System.getenv("BPL_IT_DB_URL");
-    private final String url = baseUrl + (baseUrl.contains("?") ? "&" : "?") + "currentSchema=" + schema;
-    private final String user = System.getenv("BPL_IT_DB_USERNAME");
-    private final String password = System.getenv("BPL_IT_DB_PASSWORD");
+    private final String url = postgresUrl(schema);
+    private final String user = postgresUser();
+    private final String password = postgresPassword();
 
     @Test
     void shouldUpgradeMatchingHistoryAndRejectMismatchedWrites() throws SQLException {
@@ -26,7 +24,7 @@ class OutboxAuditMigrationTests {
         try (var connection = DriverManager.getConnection(url, user, password)) {
             seedAudits(connection);
             insertOutbox(connection, 0, 0);
-            assertThat(flyway().migrate().migrationsExecuted).isEqualTo(2);
+            assertThat(flyway().migrate().migrationsExecuted).isEqualTo(3);
             flyway().validate();
             try (var statement = connection.createStatement()) {
                 assertThatThrownBy(() -> statement.executeUpdate("""

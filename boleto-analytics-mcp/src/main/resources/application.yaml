@@ -1,0 +1,64 @@
+server:
+  address: ${MCP_SERVER_ADDRESS:127.0.0.1}
+  port: ${MCP_SERVER_PORT:8090}
+
+spring:
+  application:
+    name: boleto-analytics-mcp
+  datasource:
+    url: ${MCP_DATABASE_URL}
+    username: ${MCP_DATABASE_USERNAME}
+    password: ${MCP_DATABASE_PASSWORD}
+    hikari:
+      maximum-pool-size: 4
+      minimum-idle: 0
+      connection-timeout: 3000
+      validation-timeout: 2000
+      read-only: true
+      connection-init-sql: SET statement_timeout = '5s'; SET default_transaction_read_only = on
+  flyway:
+    enabled: false
+  sql:
+    init:
+      mode: never
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${MCP_AUTH_ISSUER}
+  ai:
+    mcp:
+      server:
+        protocol: STREAMABLE
+        name: boleto-analytics-mcp
+        version: 1.0.0
+        type: SYNC
+        capabilities:
+          resource: false
+          prompt: false
+          completion: false
+        streamable-http:
+          mcp-endpoint: /mcp
+
+management:
+  endpoints:
+    access:
+      default: none
+    web:
+      exposure:
+        include: health,metrics
+  endpoint:
+    health:
+      access: read-only
+      show-details: never
+    metrics:
+      access: read-only
+
+mcp:
+  analytics:
+    auth-audience: ${MCP_AUTH_AUDIENCE}
+    auth-issuer: ${MCP_AUTH_ISSUER}
+    auth-jwks: ${MCP_AUTH_JWKS:${MCP_AUTH_ISSUER}/protocol/openid-connect/certs}
+    default-period-days: 30
+    maximum-period-days: 366
+    database-query-timeout-seconds: 5

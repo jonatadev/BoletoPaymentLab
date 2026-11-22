@@ -19,6 +19,13 @@ Use `npm --prefix docs-site run build` to generate the static site.
 After the first successful GitHub Pages deployment, it is available at
 [jonatadev.github.io/BoletoPaymentLab](https://jonatadev.github.io/BoletoPaymentLab/).
 
+## Optional PostgreSQL analytics MCP server
+
+The independent `boleto-analytics-mcp` module provides authenticated,
+read-only aggregate queries over PostgreSQL using MCP Streamable HTTP. It is
+not part of the main API runtime. Setup, security boundaries and local commands
+are documented in the [MCP analytics portal page](https://jonatadev.github.io/BoletoPaymentLab/docs/operacao/mcp-analytics/).
+
 ## Start PostgreSQL
 
 1. From the project root in PowerShell, copy the development example once.

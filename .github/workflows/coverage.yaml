@@ -30,8 +30,8 @@ jobs:
           java-version: '25'
           cache: gradle
 
-      - name: Run tests and generate JaCoCo report
-        run: ./gradlew test jacocoTestReport --no-daemon
+      - name: Run application and MCP tests
+        run: ./gradlew test integrationTest jacocoTestReport :boleto-analytics-mcp:check :boleto-analytics-mcp:jacocoTestReport --no-daemon
 
       - name: Explain skipped Codecov upload
         if: ${{ env.CODECOV_TOKEN == '' }}
@@ -41,6 +41,6 @@ jobs:
         if: ${{ env.CODECOV_TOKEN != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5
         with:
-          files: build/reports/jacoco/test/jacocoTestReport.xml
+          files: build/reports/jacoco/test/jacocoTestReport.xml,boleto-analytics-mcp/build/reports/jacoco/test/jacocoTestReport.xml
           fail_ci_if_error: true
           token: ${{ env.CODECOV_TOKEN }}

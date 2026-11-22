@@ -8,17 +8,14 @@ import java.time.LocalDate;
 import java.util.UUID;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
-@EnabledIfEnvironmentVariable(named = "BPL_IT_DB_URL", matches = ".+")
-class LegacyDatabaseUpgradeTests {
+class LegacyDatabaseUpgradeTests extends PostgresIntegrationTest {
     @Test
     void shouldUpgradeExistingV1RowsWithoutChangingIdentityOrDueDate() throws Exception {
         String schema = "bpl_it_" + UUID.randomUUID().toString().replace("-", "");
-        String originalUrl = System.getenv("BPL_IT_DB_URL");
-        String url = originalUrl + (originalUrl.contains("?") ? "&" : "?") + "currentSchema=" + schema;
-        String user = System.getenv("BPL_IT_DB_USERNAME");
-        String password = System.getenv("BPL_IT_DB_PASSWORD");
+        String url = postgresUrl(schema);
+        String user = postgresUser();
+        String password = postgresPassword();
         Flyway.configure().dataSource(url, user, password).schemas(schema).target("1").load().migrate();
 
         UUID id = UUID.randomUUID();
@@ -35,7 +32,7 @@ class LegacyDatabaseUpgradeTests {
 
         var migration = Flyway.configure().dataSource(url, user, password).schemas(schema)
                 .locations("classpath:db/migration", "classpath:db/vendor/postgresql").load();
-        assertThat(migration.migrate().migrationsExecuted).isEqualTo(5);
+        assertThat(migration.migrate().migrationsExecuted).isEqualTo(6);
         migration.validate();
         try (var connection = DriverManager.getConnection(url, user, password);
                 var query = connection.prepareStatement(
