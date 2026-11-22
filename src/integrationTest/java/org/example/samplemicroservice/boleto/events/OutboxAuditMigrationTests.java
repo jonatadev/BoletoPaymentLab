@@ -24,7 +24,7 @@ class OutboxAuditMigrationTests extends PostgresIntegrationTest {
         try (var connection = DriverManager.getConnection(url, user, password)) {
             seedAudits(connection);
             insertOutbox(connection, 0, 0);
-            assertThat(flyway().migrate().migrationsExecuted).isEqualTo(3);
+            assertThat(flyway().migrate().migrationsExecuted).isEqualTo(4);
             flyway().validate();
             try (var statement = connection.createStatement()) {
                 assertThatThrownBy(() -> statement.executeUpdate("""
