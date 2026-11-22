@@ -1,5 +1,10 @@
 # Boleto Payment Lab
 
+[![CI](https://github.com/jonatadev/BoletoPaymentLab/actions/workflows/coverage.yaml/badge.svg?branch=main)](https://github.com/jonatadev/BoletoPaymentLab/actions/workflows/coverage.yaml)
+[![Codecov](https://codecov.io/gh/jonatadev/BoletoPaymentLab/branch/main/graph/badge.svg)](https://codecov.io/gh/jonatadev/BoletoPaymentLab)
+![Java](https://img.shields.io/badge/Java-25-blue)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.x-6DB33F)
+
 Local educational lab for synthetic boleto records. The
 [MVP specification](specs/usecases/UC-BPL-001-emitir-boleto.md) is under
 review. The first implementation provides local issuance, lookup and
