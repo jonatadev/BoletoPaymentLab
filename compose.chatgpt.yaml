@@ -1,0 +1,48 @@
+services:
+  boleto-analytics-mcp:
+    environment:
+      MCP_AUTH_ISSUER: https://${KEYCLOAK_PUBLIC_HOSTNAME:?Set KEYCLOAK_PUBLIC_HOSTNAME}/realms/boleto-lab
+      MCP_AUTH_JWKS: http://keycloak-chatgpt:8080/realms/boleto-lab/protocol/openid-connect/certs
+      MCP_OAUTH_RESOURCE: ${CHATGPT_MCP_RESOURCE:?Set CHATGPT_MCP_RESOURCE to the actual HTTPS resource}
+      MCP_OAUTH_ENABLED: "true"
+    depends_on:
+      keycloak-chatgpt:
+        condition: service_started
+
+  keycloak-chatgpt:
+    profiles: ["mcp"]
+    image: quay.io/keycloak/keycloak:26.8.2
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_HOSTNAME: https://${KEYCLOAK_PUBLIC_HOSTNAME:?Set KEYCLOAK_PUBLIC_HOSTNAME}
+      KC_PROXY_HEADERS: xforwarded
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${CHATGPT_KC_ADMIN_USERNAME:?Set CHATGPT_KC_ADMIN_USERNAME}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${CHATGPT_KC_ADMIN_PASSWORD:?Set CHATGPT_KC_ADMIN_PASSWORD}
+    volumes:
+      - keycloak-chatgpt-data:/opt/keycloak/data
+      - ./infra/keycloak:/opt/keycloak/data/import:ro
+
+  chatgpt-oauth-proxy:
+    profiles: ["mcp"]
+    image: nginx:1.28-alpine
+    depends_on:
+      - keycloak-chatgpt
+    networks: [default, chatgpt-edge]
+    volumes:
+      - ./infra/keycloak/chatgpt-oauth-proxy.conf:/etc/nginx/conf.d/default.conf:ro
+
+  chatgpt-oauth-tunnel:
+    profiles: ["chatgpt-public"]
+    image: ${CHATGPT_CLOUDFLARED_IMAGE:-cloudflare/cloudflared:2025.8.1}
+    command: ["tunnel", "--no-autoupdate", "run"]
+    environment:
+      TUNNEL_TOKEN: ${CHATGPT_CLOUDFLARE_TUNNEL_TOKEN:-}
+    networks: [chatgpt-edge]
+    depends_on:
+      - chatgpt-oauth-proxy
+
+volumes:
+  keycloak-chatgpt-data:
+
+networks:
+  chatgpt-edge:
