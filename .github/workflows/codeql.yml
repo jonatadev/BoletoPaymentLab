@@ -1,0 +1,47 @@
+name: CodeQL
+
+"on":
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '23 3 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  analyze-java-kotlin:
+    name: CodeQL Java/Kotlin analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Check out source
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Java 25
+        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4.8.0
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: gradle
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@800a1d8701a65d150a672fef0923dbf2660a62ec
+        with:
+          languages: java-kotlin
+          build-mode: manual
+          queries: security-extended
+
+      - name: Compile Gradle modules
+        run: ./gradlew classes :boleto-analytics-mcp:classes --no-daemon
+
+      - name: Analyze source
+        uses: github/codeql-action/analyze@800a1d8701a65d150a672fef0923dbf2660a62ec
+        with:
+          category: /language:java-kotlin

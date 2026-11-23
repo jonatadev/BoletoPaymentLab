@@ -32,7 +32,7 @@ class LegacyDatabaseUpgradeTests extends PostgresIntegrationTest {
 
         var migration = Flyway.configure().dataSource(url, user, password).schemas(schema)
                 .locations("classpath:db/migration", "classpath:db/vendor/postgresql").load();
-        assertThat(migration.migrate().migrationsExecuted).isEqualTo(6);
+        assertThat(migration.migrate().migrationsExecuted).isEqualTo(7);
         migration.validate();
         try (var connection = DriverManager.getConnection(url, user, password);
                 var query = connection.prepareStatement(

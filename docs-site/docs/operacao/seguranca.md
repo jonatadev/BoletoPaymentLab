@@ -82,3 +82,30 @@ sequenceDiagram
     A->>R: Encaminhar requisição
   end
 ```
+
+## Segurança e qualidade no GitHub
+
+O repositório usa quatro controles complementares:
+
+- **Dependabot** abre PRs semanais para dependências Gradle, actions e imagens
+  Docker. Atualizações major permanecem separadas e nunca sofrem merge
+  automático.
+- **CodeQL** analisa Java/Kotlin em `main`, PRs, execução semanal e manual.
+  Achados aparecem em **Security > Code scanning** quando o recurso estiver
+  habilitado no GitHub.
+- **Gitleaks** verifica o intervalo de commits do PR e todo o histórico nos
+  pushes de `main`; uma falha indica possível segredo e deve ser investigada,
+  removida e rotacionada se for real.
+- [SECURITY.md](https://github.com/jonatadev/BoletoPaymentLab/security/policy)
+  explica como reportar vulnerabilidades de forma privada.
+
+Para uma verificação local, instale o Gitleaks e execute
+`gitleaks git --redact=100 --no-banner`. Não confirme um segredo real para
+testar o scanner: use uma cadeia sintética descartável fora do índice Git.
+
+Os mantenedores ainda precisam habilitar, nas configurações do repositório,
+Dependabot alerts, Dependabot security updates, Code scanning e Private
+Vulnerability Reporting. Regras de proteção de branch podem exigir os checks
+**CodeQL Java/Kotlin analysis** e **Scan committed history**. A disponibilidade
+de alguns recursos depende da visibilidade do repositório, plano e permissões
+da organização.
