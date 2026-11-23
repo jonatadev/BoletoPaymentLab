@@ -25,7 +25,7 @@ Não há atualmente cliente HTTP externo de negócio. Por isso, WireMock não é
 
 ## Containers e assincronia
 
-`PostgresIntegrationTest` mantém um PostgreSQL `postgres:16.11-alpine` por JVM de testes. Cada classe usa um esquema `bpl_it_*` próprio; isso permite reutilizar o processo sem compartilhar dados de negócio. `BoletoEventsPostgresTests` inicia também um Kafka `apache/kafka:3.9.1`, somente para o fluxo real do Outbox.
+`PostgresIntegrationTest` mantém um PostgreSQL `postgres:16.11-alpine` por JVM de testes. Cada cenário PostgreSQL usa um banco isolado no contêiner, incluindo seu próprio schema `analytics`. A execução não cria schemas no PostgreSQL do Compose. `BoletoEventsPostgresTests` inicia também um Kafka `apache/kafka:3.9.1` para o fluxo real do Outbox.
 
 Os containers são descartados ao terminar a execução e não usam reutilização persistente. Testcontainers requer um daemon Docker acessível. No CI hospedado do GitHub Actions, o runner disponibiliza Docker; localmente, inicie o Docker Desktop antes de executar a suíte de integração.
 

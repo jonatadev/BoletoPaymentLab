@@ -20,8 +20,8 @@ title: Testes e validação
 | `OutboxAuditMigrationTests` | Migração V4–V5 com eventos legados, rejeição de relações divergentes e rollback do DDL nos cenários S17–S19. |
 
 As suítes de PostgreSQL e Kafka usam Testcontainers e exigem apenas um daemon
-Docker acessível. Cada execução usa um esquema isolado `bpl_it_*` e tópico/grupo
-Kafka próprios. A consulta opcional de trace ainda requer `BPL_IT_JAEGER_QUERY`
+Docker acessível. Os testes usam bancos isolados no PostgreSQL descartável e
+tópico e grupo Kafka próprios. A consulta opcional de trace requer `BPL_IT_JAEGER_QUERY`
 e `BPL_IT_JAEGER_OTLP` quando um Jaeger local estiver disponível.
 
 ## Cobertura de testes

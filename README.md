@@ -231,16 +231,14 @@ this release.
 
 ## Run tests
 
-Run `./gradlew test` (or `gradlew.bat test` on Windows). To include the
-HTTP and PostgreSQL scenarios, set `BPL_IT_DB_URL`, `BPL_IT_DB_USERNAME`
-and `BPL_IT_DB_PASSWORD` for a disposable or local development database
-with schema creation permission. Each integration run uses a fresh
-`bpl_it_*` schema, leaving it for inspection. Set `BPL_IT_KAFKA_BOOTSTRAP`
-to exercise broker delivery as well. The integration suite uses a separate
-topic and consumer group for each run. Set `BPL_IT_JAEGER_QUERY` to the Jaeger
-base URL to verify trace export and lookup, and `BPL_IT_JAEGER_OTLP` if the
-collector uses a non-default port. Without the integration URL,
-the PostgreSQL tests are skipped and the unit and foundation tests still run.
+Run `./gradlew test` (or `gradlew.bat test` on Windows). Run
+`./gradlew integrationTest` with Docker running for the HTTP, PostgreSQL,
+and Kafka integration scenarios. Testcontainers starts disposable services.
+Each PostgreSQL scenario uses an isolated database inside its test container,
+so it leaves no `bpl_it_*` schemas in the application's Compose database.
+The Kafka integration uses a dedicated topic and consumer group. Set
+`BPL_IT_JAEGER_QUERY` to the Jaeger base URL to verify trace export and lookup,
+and `BPL_IT_JAEGER_OTLP` if the collector uses a non-default port.
 
 ## Scan for secrets
 
