@@ -5,6 +5,13 @@
   "registrationAllowed": false,
   "clientScopes": [
     {
+      "name": "analytics:read",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true"
+      }
+    },
+    {
       "name": "bpl-audience",
       "protocol": "openid-connect",
       "attributes": {
@@ -74,6 +81,35 @@
     }
   ],
   "clients": [
+    {
+      "clientId": "boleto-chatgpt",
+      "enabled": false,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "fullScopeAllowed": false,
+      "redirectUris": [],
+      "defaultClientScopes": ["analytics:read"],
+      "optionalClientScopes": [],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      },
+      "protocolMappers": [
+        {
+          "name": "boleto-analytics-mcp audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "boleto-analytics-mcp",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        }
+      ]
+    },
     {
       "clientId": "boleto-issuer",
       "enabled": true,

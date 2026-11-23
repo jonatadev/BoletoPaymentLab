@@ -1,7 +1,10 @@
 package org.example.samplemicroservice.analytics;
 
 import jakarta.servlet.DispatcherType;
+import java.net.URI;
 import java.time.Duration;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
@@ -15,13 +18,23 @@ import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.oauth2.server.resource.web.BearerTokenAuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.client.RestTemplate;
 
 @Configuration(proxyBeanMethods = false)
+@EnableConfigurationProperties(AnalyticsSecurity.OAuthSettings.class)
 class AnalyticsSecurity {
     @Bean
-    SecurityFilterChain analyticsSecurityFilterChain(HttpSecurity http) throws Exception {
+    SecurityFilterChain analyticsSecurityFilterChain(HttpSecurity http,
+            OAuthSettings oauth, AnalyticsProperties analytics) throws Exception {
+        var entryPoint = new BearerTokenAuthenticationEntryPoint();
+        if (oauth.enabled()) {
+            requireHttps(oauth.resource());
+            requireHttps(URI.create(analytics.authIssuer()));
+            entryPoint.setResourceMetadataParameterResolver(request ->
+                    oauth.resource().resolve("/.well-known/oauth-protected-resource").toASCIIString());
+        }
         return http
                 .csrf(AbstractHttpConfigurer::disable)
                 .requestCache(AbstractHttpConfigurer::disable)
@@ -31,8 +44,31 @@ class AnalyticsSecurity {
                         .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
                         .requestMatchers("/mcp", "/mcp/**").hasAuthority("SCOPE_analytics:read")
                         .anyRequest().denyAll())
-                .oauth2ResourceServer(server -> server.jwt(Customizer.withDefaults()))
+                .oauth2ResourceServer(server -> {
+                    server.jwt(Customizer.withDefaults());
+                    if (oauth.enabled()) {
+                        server.protectedResourceMetadata(metadata -> metadata.protectedResourceMetadataCustomizer(
+                                builder -> builder.resource(oauth.resource().toASCIIString())
+                                        .authorizationServers(servers -> {
+                                            servers.clear();
+                                            servers.add(analytics.authIssuer());
+                                        })
+                                        .scope("analytics:read")));
+                        server.authenticationEntryPoint(entryPoint);
+                    }
+                })
                 .build();
+    }
+
+    private static void requireHttps(URI uri) {
+        if (uri == null || !"https".equals(uri.getScheme()) || uri.getHost() == null
+                || uri.getUserInfo() != null || uri.getFragment() != null || uri.getQuery() != null) {
+            throw new IllegalArgumentException("OAuth identifiers must be HTTPS URIs without user info, query or fragment");
+        }
+    }
+
+    @ConfigurationProperties("mcp.oauth")
+    record OAuthSettings(boolean enabled, URI resource) {
     }
 
     @Bean
