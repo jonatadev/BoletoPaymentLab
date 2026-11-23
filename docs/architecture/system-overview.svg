@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 930 640" role="img" aria-labelledby="title desc">
+<title id="title">Boleto Payment Lab architecture</title>
+<desc id="desc">REST and MCP clients authenticate with JWTs. Spring Boot stores boletos and Outbox events in PostgreSQL and relays events to Kafka. The optional MCP service queries analytics views through a read-only role. Both services verify tokens using Keycloak keys.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#25344a"/></marker></defs>
+<rect width="930" height="640" rx="18" fill="#ffffff"/>
+<g fill="#25344a" font-family="Arial, sans-serif">
+<polyline points="200,181 330,181" fill="none" stroke="#25344a" stroke-width="2" marker-end="url(#arrow)"/>
+<polyline points="200,376 330,376" fill="none" stroke="#25344a" stroke-width="2" marker-end="url(#arrow)"/>
+<polyline points="570,149 638,149 638,67 700,67" fill="none" stroke="#25344a" stroke-width="2" marker-end="url(#arrow)"/>
+<polyline points="536,322 536,252 670,252 670,85 700,85" fill="none" stroke="#25344a" stroke-width="2" marker-end="url(#arrow)"/>
+<polyline points="570,202 607,202 607,231 700,231" fill="none" stroke="#25344a" stroke-width="2" marker-end="url(#arrow)"/>
+<polyline points="570,384 643,384 643,307 700,307" fill="none" stroke="#25344a" stroke-width="2" marker-end="url(#arrow)"/>
+<polyline points="385,232 385,255 278,255 278,571 330,571" fill="none" stroke="#25344a" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="30" y="145" width="170" height="72" rx="12" fill="#f1f3f5" stroke="#25344a" stroke-width="2"/>
+<text x="45" y="176" font-size="18"><tspan x="45" dy="0">REST client</tspan></text>
+<rect x="30" y="340" width="170" height="72" rx="12" fill="#f1f3f5" stroke="#25344a" stroke-width="2"/>
+<text x="45" y="371" font-size="18"><tspan x="45" dy="0">MCP client</tspan></text>
+<rect x="330" y="130" width="240" height="102" rx="12" fill="#dbeafe" stroke="#25344a" stroke-width="2"/>
+<text x="345" y="161" font-size="18"><tspan x="345" dy="0">Spring Boot API</tspan><tspan x="345" dy="22.5">Boleto Payment Lab</tspan></text>
+<rect x="330" y="322" width="240" height="108" rx="12" fill="#ede9fe" stroke="#25344a" stroke-width="2"/>
+<text x="345" y="353" font-size="18"><tspan x="345" dy="0">Analytics MCP (optional)</tspan><tspan x="345" dy="22.5">Read-only tools</tspan></text>
+<rect x="700" y="35" width="200" height="66" rx="12" fill="#fef3c7" stroke="#25344a" stroke-width="2"/>
+<text x="715" y="66" font-size="18"><tspan x="715" dy="0">Keycloak</tspan><tspan x="715" dy="22.5">OIDC / JWKS</tspan></text>
+<rect x="700" y="220" width="200" height="112" rx="12" fill="#dcfce7" stroke="#25344a" stroke-width="2"/>
+<text x="715" y="251" font-size="18"><tspan x="715" dy="0">PostgreSQL</tspan><tspan x="715" dy="22.5">Boleto + Outbox tables</tspan><tspan x="715" dy="22.5">Analytics views</tspan></text>
+<rect x="330" y="532" width="240" height="78" rx="12" fill="#ffedd5" stroke="#25344a" stroke-width="2"/>
+<text x="345" y="563" font-size="18"><tspan x="345" dy="0">Kafka</tspan><tspan x="345" dy="22.5">Lifecycle events</tspan></text>
+<text x="30" y="64" font-size="26"><tspan x="30" dy="0">Boleto Payment Lab architecture</tspan></text>
+<text x="215" y="167" font-size="14"><tspan x="215" dy="0">REST + JWT</tspan></text>
+<text x="209" y="364" font-size="14"><tspan x="209" dy="0">HTTP + JWT</tspan></text>
+<text x="578" y="135" font-size="14"><tspan x="578" dy="0">JWKS</tspan></text>
+<text x="577" y="271" font-size="14"><tspan x="577" dy="0">JWKS</tspan></text>
+<text x="579" y="190" font-size="14"><tspan x="579" dy="0">JDBC</tspan></text>
+<text x="583" y="368" font-size="14"><tspan x="583" dy="0">Read-only SQL</tspan></text>
+<text x="73" y="555" font-size="14"><tspan x="73" dy="0">Outbox relay → Kafka</tspan></text>
+</g>
+</svg>

@@ -10,6 +10,16 @@ Local educational lab for synthetic boleto records. The
 review. The first implementation provides local issuance, lookup and
 on-demand educational PDF rendering.
 
+## System architecture
+
+![Architecture of the Boleto Payment Lab](docs/architecture/system-overview.svg)
+
+The Spring Boot API validates JWTs, persists boleto state and Outbox events
+in PostgreSQL, and relays pending events to Kafka. The optional analytics
+MCP process reads aggregate views through a separate PostgreSQL role.
+
+[Editable Excalidraw source](docs/architecture/system-overview.excalidraw)
+
 ## Technical documentation portal
 
 The [Docusaurus portal](docs-site/README.md) documents the API, architecture,
