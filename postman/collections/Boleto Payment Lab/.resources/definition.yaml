@@ -1,0 +1,5 @@
+$kind: collection
+name: Boleto Payment Lab
+description: Local synthetic lab. Obtain client tokens first. Issue a fresh boleto for each terminal transition.
+variables:
+  dueDate: ""

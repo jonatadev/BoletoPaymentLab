@@ -1,0 +1,44 @@
+name: Boleto Payment Lab Local
+values:
+  - key: baseUrl
+    value: http://127.0.0.1:8081
+    enabled: true
+  - key: customerId
+    value: customer-demo-001
+    enabled: true
+  - key: nonexistentBoletoId
+    value: 00000000-0000-4000-8000-000000000000
+    enabled: true
+  - key: oidcIssuer
+    value: http://127.0.0.1:8180/realms/boleto-lab
+    enabled: true
+  - key: boletoId
+    value: ''
+    enabled: true
+  - key: idempotencyKey
+    value: ''
+    enabled: true
+  - key: issuerClientSecret
+    value: ''
+    enabled: true
+  - key: issuerToken
+    value: ''
+    enabled: true
+  - key: readerClientSecret
+    value: ''
+    enabled: true
+  - key: readerToken
+    value: ''
+    enabled: true
+  - key: operatorClientSecret
+    value: ''
+    enabled: true
+  - key: operatorToken
+    value: ''
+    enabled: true
+  - key: metricsClientSecret
+    value: ''
+    enabled: true
+  - key: metricsToken
+    value: ''
+    enabled: true

@@ -1,0 +1,24 @@
+$kind: http-request
+url: "{{baseUrl}}/api/v1/boletos"
+method: POST
+headers:
+  Content-Type: application/json
+  Idempotency-Key: "{{validationKey}}"
+body:
+  type: json
+  content: '{"customerId":"{{customerId}}","amount":10.00,"dueDate":"2000-01-01"}'
+auth:
+  type: bearer
+  credentials:
+    token: "{{issuerToken}}"
+scripts:
+  - type: beforeRequest
+    code: pm.variables.set('validationKey', pm.variables.replaceIn('{{$guid}}'));
+    language: text/javascript
+  - type: afterResponse
+    code: |-
+      pm.test('HTTP 400', () => pm.response.to.have.status(400));
+      pm.test('ProblemDetail code', () => pm.expect(pm.response.json().code).to.eql('INVALID_REQUEST'));
+      pm.test('ProblemDetail content type', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/problem+json'));
+    language: text/javascript
+order: 11000

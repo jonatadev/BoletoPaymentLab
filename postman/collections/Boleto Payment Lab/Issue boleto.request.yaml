@@ -1,0 +1,35 @@
+$kind: http-request
+url: "{{baseUrl}}/api/v1/boletos"
+method: POST
+headers:
+  Content-Type: application/json
+  Idempotency-Key: "{{idempotencyKey}}"
+body:
+  type: json
+  content: '{"customerId":"{{customerId}}","amount":10.00,"dueDate":"{{dueDate}}"}'
+auth:
+  type: bearer
+  credentials:
+    token: "{{issuerToken}}"
+scripts:
+  - type: beforeRequest
+    code: |-
+      pm.collectionVariables.set('dueDate', new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10));
+      pm.environment.set('idempotencyKey', pm.variables.replaceIn('{{$guid}}'));
+      pm.environment.set('boletoId', '');
+    language: text/javascript
+  - type: afterResponse
+    code: |-
+      pm.test('HTTP 201', () => pm.response.to.have.status(201));
+      if (pm.response.code === 201) {
+        const id = pm.response.json().id;
+        pm.test('Boleto UUID is returned', () => pm.expect(id).to.match(/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i));
+        if (typeof id === 'string') pm.environment.set('boletoId', id);
+      }
+      if (pm.response.code === 201) {
+        pm.test('Location identifies the issued boleto', () => {
+          pm.expect(pm.response.headers.get('Location')).to.eql('/api/v1/boletos/' + pm.response.json().id);
+        });
+      }
+    language: text/javascript
+order: 5000

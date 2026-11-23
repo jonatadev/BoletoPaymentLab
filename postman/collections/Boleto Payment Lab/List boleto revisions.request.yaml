@@ -1,0 +1,14 @@
+$kind: http-request
+url: "{{baseUrl}}/api/v1/boletos/{{boletoId}}/revisions?size=20"
+method: GET
+auth:
+  type: bearer
+  credentials:
+    token: "{{operatorToken}}"
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('HTTP 200', () => pm.response.to.have.status(200));
+      if (pm.response.code === 200) { const revisions = pm.response.json(); pm.collectionVariables.unset('latestRevision'); pm.collectionVariables.unset('firstComparedRevision'); if (revisions.length) pm.collectionVariables.set('latestRevision', revisions[0].revision); if (revisions.length > 1) pm.collectionVariables.set('firstComparedRevision', revisions[1].revision); }
+    language: text/javascript
+order: 18000

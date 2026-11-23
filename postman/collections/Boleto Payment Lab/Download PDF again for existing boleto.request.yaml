@@ -1,0 +1,14 @@
+$kind: http-request
+url: "{{baseUrl}}/api/v1/boletos/{{boletoId}}/pdf"
+method: GET
+auth:
+  type: bearer
+  credentials:
+    token: "{{readerToken}}"
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('HTTP 200', () => pm.response.to.have.status(200));
+      pm.test('PDF content type', () => pm.expect(pm.response.headers.get('Content-Type')).to.match(/^application\/pdf\b/i));
+    language: text/javascript
+order: 13000

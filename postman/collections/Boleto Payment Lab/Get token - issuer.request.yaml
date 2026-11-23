@@ -1,0 +1,18 @@
+$kind: http-request
+url: "{{oidcIssuer}}/protocol/openid-connect/token"
+method: POST
+body:
+  type: urlencoded
+  content:
+    grant_type: client_credentials
+    client_id: boleto-issuer
+    client_secret: "{{issuerClientSecret}}"
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('HTTP 200', () => pm.response.to.have.status(200));
+      if (pm.response.code === 200) pm.environment.set('issuerToken', pm.response.json().access_token);
+    language: text/javascript
+order: 1000

@@ -1,0 +1,9 @@
+$kind: http-request
+description: Issue and transition the same boleto, then list its revisions to set both revision numbers.
+url: "{{baseUrl}}/api/v1/boletos/{{boletoId}}/revisions/compare?from={{firstComparedRevision}}&to={{latestRevision}}"
+method: GET
+auth:
+  type: bearer
+  credentials:
+    token: "{{operatorToken}}"
+order: 20000

@@ -151,8 +151,11 @@ defines terminal states and filters. For example,
 
 ## Import the Postman requests
 
-1. In Postman, import both JSON files in [postman/](postman/) and select the
-   **Boleto Payment Lab Local** environment.
+1. For Postman Local Mode, open the repository root and select the
+   **Boleto Payment Lab** collection and **Boleto Payment Lab Local**
+   environment from [postman/](postman/). The v3 YAML environment defaults
+   to `http://127.0.0.1:8081`. The JSON exports remain available for legacy
+   clients.
 2. Set the client secrets locally and run the matching **Get token** requests.
    Confirm `baseUrl` matches the local Spring port. Run the first issuance
    before its replays, lookup and PDF

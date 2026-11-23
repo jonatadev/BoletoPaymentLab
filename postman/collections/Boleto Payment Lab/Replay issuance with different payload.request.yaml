@@ -1,0 +1,21 @@
+$kind: http-request
+url: "{{baseUrl}}/api/v1/boletos"
+method: POST
+headers:
+  Content-Type: application/json
+  Idempotency-Key: "{{idempotencyKey}}"
+body:
+  type: json
+  content: '{"customerId":"{{customerId}}","amount":11.00,"dueDate":"{{dueDate}}"}'
+auth:
+  type: bearer
+  credentials:
+    token: "{{issuerToken}}"
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('HTTP 409', () => pm.response.to.have.status(409));
+      pm.test('ProblemDetail code', () => pm.expect(pm.response.json().code).to.eql('IDEMPOTENCY_CONFLICT'));
+      pm.test('ProblemDetail content type', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('application/problem+json'));
+    language: text/javascript
+order: 9000
