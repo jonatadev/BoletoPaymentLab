@@ -7,6 +7,18 @@ server:
     threads:
       max: 32
 
+springdoc:
+  api-docs:
+    enabled: ${BPL_OPENAPI_ENABLED:false}
+    version: openapi_3_0
+  swagger-ui:
+    enabled: ${BPL_OPENAPI_ENABLED:false}
+    persist-authorization: false
+    disable-swagger-default-url: true
+  paths-to-match: /api/v1/boletos,/api/v1/boletos/**
+  writer-with-order-by-keys: true
+  override-with-generic-response: false
+
 spring:
   application:
     name: BoletoPaymentLab

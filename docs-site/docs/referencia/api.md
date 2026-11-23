@@ -1,6 +1,8 @@
 ---
-title: API REST
+title: API Reference — Boleto Payment Lab
 ---
+
+import useBaseUrl from '@docusaurus/useBaseUrl';
 
 A base local padrão é `http://127.0.0.1:8080`. As rotas de boleto exigem
 `Authorization: Bearer <token-local>`. Use o cliente OIDC com o escopo da
@@ -149,11 +151,22 @@ na coleção Postman e testes HTTP com PostgreSQL. Ao alterar uma rota,
 atualize essas referências na mesma revisão e confirme códigos de resposta,
 validação, escopos e exemplos nos testes correspondentes.
 
-O projeto ainda não publica OpenAPI. Uma futura geração a partir dos
-controllers deve validar o resultado contra os testes HTTP. Revise
-explicitamente o corpo recebido como `JsonNode`, os campos de
-`ProblemDetail`, os escopos e os cabeçalhos de idempotência. Esses detalhes
-exigem mais informação do que as assinaturas dos métodos mostram.
+O contrato gerado em **OpenAPI 3.0.4** está disponível para
+<a href={useBaseUrl('/openapi/boleto-payment-lab-v1.yaml')}>consulta e download</a>.
+Abra o YAML em uma instância confiável do Swagger Editor para navegar pela
+referência estática. O CI verifica divergências entre a API e o arquivo.
+
+Para habilitar o Swagger UI na aplicação local, defina
+`BPL_OPENAPI_ENABLED=true` no processo Spring antes de inicializá-lo. Abra
+`http://127.0.0.1:8080/swagger-ui/index.html` e ajuste a porta se necessário.
+O JSON fica em `/v3/api-docs`. A documentação de runtime fica desabilitada
+por padrão.
+
+Obtenha um access token com `client_credentials` no endpoint do realm
+`boleto-lab`, seguindo o [guia de segurança](../operacao/seguranca.md).
+No Swagger UI, use **Authorize → bearerJwt** e cole somente o access
+token. Use Postman ou cURL para a troca de credenciais. O issuer padrão é
+`http://127.0.0.1:8180/realms/boleto-lab` e a audiência é `boleto-api`.
 Para executar exemplos, use a [coleção Postman local](../inicio/executar.md#usar-o-postman).
 
 ## Mapeamento de erros

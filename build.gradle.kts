@@ -24,6 +24,7 @@ repositories {
 }
 
 dependencies {
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.2.1")
     implementation("org.springframework.boot:spring-boot-h2console")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.hibernate.orm:hibernate-envers")
@@ -64,6 +65,15 @@ configurations[integrationTest.runtimeOnlyConfigurationName].extendsFrom(configu
 
 tasks.withType<Test> {
     useJUnitPlatform()
+}
+
+tasks.test {
+    val published = layout.projectDirectory.file("docs-site/static/openapi/boleto-payment-lab-v1.yaml")
+    val regenerate = providers.gradleProperty("regenerateOpenApi").map { it.toBoolean() }.orElse(false)
+    systemProperty("bpl.openapi.published", published.asFile.absolutePath)
+    systemProperty("bpl.openapi.regenerate", regenerate.get())
+    inputs.files(published).withPathSensitivity(PathSensitivity.RELATIVE)
+    outputs.upToDateWhen { !regenerate.get() }
 }
 
 val integrationTestTask = tasks.register<Test>("integrationTest") {

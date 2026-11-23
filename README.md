@@ -10,6 +10,23 @@ Local educational lab for synthetic boleto records. The
 review. The first implementation provides local issuance, lookup and
 on-demand educational PDF rendering.
 
+## REST API contract and Swagger UI
+
+The generated [OpenAPI 3.0.4 contract](docs-site/static/openapi/boleto-payment-lab-v1.yaml)
+describes the REST endpoints and operation scopes. For local development,
+set `BPL_OPENAPI_ENABLED=true` in the application process and open
+`/swagger-ui/index.html`. The JSON description is at `/v3/api-docs`.
+Both are disabled by default. Obtain a service token outside the browser
+and paste only the access token into the **bearerJwt** authorization field.
+
+Regenerate the published contract from the repository root:
+
+```powershell
+.\gradlew.bat :test --tests '*OpenApiContractTests' -PregenerateOpenApi=true
+```
+
+The normal test task compares the generated contract with the published YAML.
+
 ## Technical documentation portal
 
 The [Docusaurus portal](docs-site/README.md) documents the API, architecture,
