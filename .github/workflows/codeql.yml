@@ -32,7 +32,7 @@ jobs:
           cache: gradle
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@800a1d8701a65d150a672fef0923dbf2660a62ec
+        uses: github/codeql-action/init@1bd86f2fdb4b86187fa4059f16f31a3202acc9ea
         with:
           languages: java-kotlin
           build-mode: manual
