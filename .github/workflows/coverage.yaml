@@ -30,7 +30,7 @@ jobs:
           java-version: '25'
           cache: gradle
 
-      - name: Run application and MCP tests
+      - name: Run application, OpenAPI contract and MCP tests
         run: ./gradlew test integrationTest jacocoTestReport :boleto-analytics-mcp:check :boleto-analytics-mcp:jacocoTestReport --no-daemon
 
       - name: Explain skipped Codecov upload

@@ -1,0 +1,1543 @@
+openapi: 3.0.4
+info:
+  description: Educational REST API for synthetic boleto records. No real bank payment
+    is supported.
+  title: Boleto Payment Lab API
+  version: v1
+servers:
+  - description: Current API origin
+    url: /
+paths:
+  /actuator/health:
+    get:
+      operationId: getHealth
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                status: UP
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+          description: Probe is available
+        '503':
+          content:
+            application/json:
+              example:
+                status: DOWN
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+          description: Probe is unavailable
+      security: []
+      summary: Read the Actuator probe status
+      tags:
+        - Operations
+  /actuator/health/liveness:
+    get:
+      operationId: getLiveness
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                status: UP
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+          description: Probe is available
+        '503':
+          content:
+            application/json:
+              example:
+                status: DOWN
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+          description: Probe is unavailable
+      security: []
+      summary: Read the Actuator probe status
+      tags:
+        - Operations
+  /actuator/health/readiness:
+    get:
+      operationId: getReadiness
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                status: UP
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+          description: Probe is available
+        '503':
+          content:
+            application/json:
+              example:
+                status: DOWN
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+          description: Probe is unavailable
+      security: []
+      summary: Read the Actuator probe status
+      tags:
+        - Operations
+  /actuator/metrics:
+    get:
+      description: Requires the `ops:metrics` scope with either authentication option.
+      operationId: listMetrics
+      responses:
+        '200':
+          content:
+            application/vnd.spring-boot.actuator.v3+json:
+              schema:
+                type: object
+                properties:
+                  names:
+                    type: array
+                    items:
+                      type: string
+          description: Actuator metrics response
+        '401':
+          content:
+            application/problem+json:
+              example:
+                code: UNAUTHORIZED
+                status: 401
+                title: Unauthorized
+                type: about:blank
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Unauthorized
+          headers:
+            WWW-Authenticate:
+              schema:
+                type: string
+                example: Bearer
+        '403':
+          content:
+            application/problem+json:
+              example:
+                code: FORBIDDEN
+                status: 403
+                title: Forbidden
+                type: about:blank
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Forbidden
+          headers:
+            WWW-Authenticate:
+              schema:
+                type: string
+                example: Bearer error="insufficient_scope"
+      security:
+        - oauth2:
+            - ops:metrics
+        - bearerJwt: []
+      summary: List registered metric names
+      tags:
+        - Operations
+  /actuator/metrics/{name}:
+    get:
+      description: Requires the `ops:metrics` scope with either authentication option.
+      operationId: getMetric
+      parameters:
+        - in: path
+          name: name
+          required: true
+          schema:
+            type: string
+        - description: Repeat tag=key:value to filter measurements.
+          in: query
+          name: tag
+          schema:
+            type: array
+            items:
+              type: string
+      responses:
+        '200':
+          content:
+            application/vnd.spring-boot.actuator.v3+json:
+              schema:
+                type: object
+                properties:
+                  availableTags:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        tag:
+                          type: string
+                        values:
+                          type: array
+                          items:
+                            type: string
+                  baseUnit:
+                    type: string
+                    nullable: true
+                  description:
+                    type: string
+                    nullable: true
+                  measurements:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        statistic:
+                          type: string
+                        value:
+                          type: number
+                  name:
+                    type: string
+          description: Actuator metrics response
+        '401':
+          content:
+            application/problem+json:
+              example:
+                code: UNAUTHORIZED
+                status: 401
+                title: Unauthorized
+                type: about:blank
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Unauthorized
+          headers:
+            WWW-Authenticate:
+              schema:
+                type: string
+                example: Bearer
+        '403':
+          content:
+            application/problem+json:
+              example:
+                code: FORBIDDEN
+                status: 403
+                title: Forbidden
+                type: about:blank
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Forbidden
+          headers:
+            WWW-Authenticate:
+              schema:
+                type: string
+                example: Bearer error="insufficient_scope"
+        '404':
+          description: Unknown metric
+      security:
+        - oauth2:
+            - ops:metrics
+        - bearerJwt: []
+      summary: Read measurements for a registered metric
+      tags:
+        - Operations
+  /api/v1/boletos:
+    get:
+      description: Requires the `boletos:list` scope with either authentication option.
+      operationId: listBoletos
+      parameters:
+        - in: query
+          name: customerId
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: status
+          required: false
+          schema:
+            type: string
+            enum:
+              - EMITIDO
+              - PAGO
+              - VENCIDO
+              - CANCELADO
+        - description: Inclusive issuance date in America/Sao_Paulo.
+          in: query
+          name: from
+          required: false
+          schema:
+            type: string
+            format: date
+        - description: Inclusive issuance date in America/Sao_Paulo.
+          in: query
+          name: to
+          required: false
+          schema:
+            type: string
+            format: date
+        - description: Zero-based page. The page multiplied by size must not exceed
+            100000.
+          in: query
+          name: page
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 0
+            minimum: 0
+        - in: query
+          name: size
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 20
+            maximum: 100
+            minimum: 1
+        - description: Field and direction. UUID breaks ties for non-ID fields.
+          in: query
+          name: sort
+          required: false
+          schema:
+            type: string
+            default: issuedAt,desc
+            pattern: ^(issuedAt|dueDate|amount|id),(asc|desc)$
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageResult'
+          description: Successful response
+        '400':
+          content:
+            application/problem+json:
+              example:
+                code: INVALID_REQUEST
+                detail: The request is invalid.
+                status: 400
+                title: Bad Request
+                type: about:blank
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Invalid input
+        '401':
+          content:
+            application/problem+json:
+              example:
+                code: UNAUTHORIZED
+                status: 401
+                title: Unauthorized
+                type: about:blank
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Unauthorized
+          headers:
+            WWW-Authenticate:
+              schema:
+                type: string
+                example: Bearer
+        '403':
+          content:
+            application/problem+json:
+              example:
+                code: FORBIDDEN
+                status: 403
+                title: Forbidden
+                type: about:blank
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Forbidden
+          headers:
+            WWW-Authenticate:
+              schema:
+                type: string
+                example: Bearer error="insufficient_scope"
+        '503':
+          content:
+            application/problem+json:
+              example:
+                code: DATABASE_UNAVAILABLE
+                detail: Database is temporarily unavailable.
+                status: 503
+                title: Service Unavailable
+                type: about:blank
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Database temporarily unavailable
+      security:
+        - oauth2:
+            - boletos:list
+        - bearerJwt: []
+      summary: List boletos by customer, effective status and inclusive issuance-date
+        range.
+      tags:
+        - Queries
+    post:
+      description: Requires the `boletos:issue` scope with either authentication option.
+      operationId: issueBoleto
+      parameters:
+        - description: Single printable ASCII key without spaces or commas, scoped
+            to the customer and issuance operation.
+          in: header
+          name: Idempotency-Key
+          required: true
+          schema:
+            type: string
+            maxLength: 160
+            minLength: 1
+            pattern: ^(?!.*,)[!-~]{1,160}$
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                amount:
+                  type: number
+                  example: 10.0
+                  maximum: 999999.99
+                  minimum: 0.01
+                  multipleOf: 0.01
+                customerId:
+                  type: string
+                  example: customer-demo-001
+                  maxLength: 120
+                  minLength: 1
+                  pattern: ^[A-Za-z0-9._-]{1,120}$
+                dueDate:
+                  type: string
+                  format: date
+                  description: Future date in America/Sao_Paulo on first issuance.
+                  example: 2099-11-30T00:00:00Z
+              required:
+                - amount
+                - customerId
+                - dueDate
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              example:
+                amount: 10.0
+                currency: BRL
+                customerId: customer-demo-001
+                dueDate: 2099-11-30T00:00:00Z
+                id: 6a96c74d-1094-4ddd-b96a-a27145096e54
+                issuedAt: 2026-11-23T12:00:00Z
+                status: EMITIDO
+              schema:
+                $ref: '#/components/schemas/Snapshot'
+          description: Matching request replayed with the original boleto UUID
+        '201':
+          content:
+            application/json:
+              example:
+                amount: 10.0
+                currency: BRL
+                customerId: customer-demo-001
+                dueDate: 2099-11-30T00:00:00Z
+                id: 6a96c74d-1094-4ddd-b96a-a27145096e54
+                issuedAt: 2026-11-23T12:00:00Z
+                status: EMITIDO
+              schema:
+                $ref: '#/components/schemas/Snapshot'
+          description: New boleto issued
+          headers:
+            Location:
+              description: Relative URI of the issued boleto
+              schema:
+                type: string
+        '400':
+          content:
+            application/problem+json:
+              example:
+                code: INVALID_REQUEST
+                detail: The request is invalid.
+                status: 400
+                title: Bad Request
+                type: about:blank
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Invalid input
+        '401':
+          content:
+            application/problem+json:
+              example:
+                code: UNAUTHORIZED
+                status: 401
+                title: Unauthorized
+                type: about:blank
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Unauthorized
+          headers:
+            WWW-Authenticate:
+              schema:
+                type: string
+                example: Bearer
+        '403':
+          content:
+            application/problem+json:
+              example:
+                code: FORBIDDEN
+                status: 403
+                title: Forbidden
+                type: about:blank
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Forbidden
+          headers:
+            WWW-Authenticate:
+              schema:
+                type: string
+                example: Bearer error="insufficient_scope"
+        '409':
+          content:
+            application/problem+json:
+              examples:
+                differentPayload:
+                  value:
+                    code: IDEMPOTENCY_CONFLICT
+                    detail: The key is associated with a different request.
+                    status: 409
+                    title: Conflict
+                    type: about:blank
+                inProgress:
+                  value:
+                    code: OPERATION_IN_PROGRESS
+                    detail: Issuance is in progress. Retry after the indicated delay.
+                    status: 409
+                    title: Conflict
+                    type: about:blank
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Key conflict or issuance still in progress
+          headers:
+            Retry-After:
+              description: Present for OPERATION_IN_PROGRESS
+              schema:
+                type: string
+                example: '1'
+        '503':
+          content:
+            application/problem+json:
+              example:
+                code: DATABASE_UNAVAILABLE
+                detail: Database is temporarily unavailable.
+                status: 503
+                title: Service Unavailable
+                type: about:blank
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Database temporarily unavailable
+      security:
+        - oauth2:
+            - boletos:issue
+        - bearerJwt: []
+      summary: Issue a synthetic boleto or replay a completed request.
+      tags:
+        - Issuance
+  /api/v1/boletos/{id}:
+    get:
+      description: Requires the `boletos:read` scope with either authentication option.
+      operationId: getBoleto
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Snapshot'
+          description: Successful response
+        '400':
+          content:
+            application/problem+json:
+              example:
+                code: INVALID_REQUEST
+                detail: The request is invalid.
+                status: 400
+                title: Bad Request
+                type: about:blank
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Invalid input
+        '401':
+          content:
+            application/problem+json:
+              example:
+                code: UNAUTHORIZED
+                status: 401
+                title: Unauthorized
+                type: about:blank
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Unauthorized
+          headers:
+            WWW-Authenticate:
+              schema:
+                type: string
+                example: Bearer
+        '403':
+          content:
+            application/problem+json:
+              example:
+                code: FORBIDDEN
+                status: 403
+                title: Forbidden
+                type: about:blank
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Forbidden
+          headers:
+            WWW-Authenticate:
+              schema:
+                type: string
+                example: Bearer error="insufficient_scope"
+        '404':
+          content:
+            application/problem+json:
+              example:
+                code: BOLETO_NOT_FOUND
+                status: 404
+                title: Not Found
+                type: about:blank
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Record not found
+        '503':
+          content:
+            application/problem+json:
+              example:
+                code: DATABASE_UNAVAILABLE
+                detail: Database is temporarily unavailable.
+                status: 503
+                title: Service Unavailable
+                type: about:blank
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Database temporarily unavailable
+      security:
+        - oauth2:
+            - boletos:read
+        - bearerJwt: []
+      summary: Retrieve a boleto by UUID.
+      tags:
+        - Queries
+  /api/v1/boletos/{id}/cancellations:
+    post:
+      description: Requires the `boletos:cancel` scope with either authentication
+        option.
+      operationId: cancelBoleto
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Snapshot'
+          description: Successful response
+        '400':
+          content:
+            application/problem+json:
+              example:
+                code: INVALID_REQUEST
+                detail: The request is invalid.
+                status: 400
+                title: Bad Request
+                type: about:blank
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Invalid input
+        '401':
+          content:
+            application/problem+json:
+              example:
+                code: UNAUTHORIZED
+                status: 401
+                title: Unauthorized
+                type: about:blank
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Unauthorized
+          headers:
+            WWW-Authenticate:
+              schema:
+                type: string
+                example: Bearer
+        '403':
+          content:
+            application/problem+json:
+              example:
+                code: FORBIDDEN
+                status: 403
+                title: Forbidden
+                type: about:blank
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Forbidden
+          headers:
+            WWW-Authenticate:
+              schema:
+                type: string
+                example: Bearer error="insufficient_scope"
+        '404':
+          content:
+            application/problem+json:
+              example:
+                code: BOLETO_NOT_FOUND
+                status: 404
+                title: Not Found
+                type: about:blank
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Record not found
+        '409':
+          content:
+            application/problem+json:
+              example:
+                code: INVALID_STATE_TRANSITION
+                detail: The requested transition is not valid for the current state.
+                status: 409
+                title: Conflict
+                type: about:blank
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Conflict with the current state or idempotency key
+        '503':
+          content:
+            application/problem+json:
+              example:
+                code: DATABASE_UNAVAILABLE
+                detail: Database is temporarily unavailable.
+                status: 503
+                title: Service Unavailable
+                type: about:blank
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Database temporarily unavailable
+      security:
+        - oauth2:
+            - boletos:cancel
+        - bearerJwt: []
+      summary: Cancel an issued, unexpired boleto.
+      tags:
+        - Lifecycle
+  /api/v1/boletos/{id}/history:
+    get:
+      description: Requires the `boletos:audit` scope with either authentication option.
+      operationId: getBoletoHistory
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AuditEntry'
+          description: Successful response
+        '400':
+          content:
+            application/problem+json:
+              example:
+                code: INVALID_REQUEST
+                detail: The request is invalid.
+                status: 400
+                title: Bad Request
+                type: about:blank
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Invalid input
+        '401':
+          content:
+            application/problem+json:
+              example:
+                code: UNAUTHORIZED
+                status: 401
+                title: Unauthorized
+                type: about:blank
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Unauthorized
+          headers:
+            WWW-Authenticate:
+              schema:
+                type: string
+                example: Bearer
+        '403':
+          content:
+            application/problem+json:
+              example:
+                code: FORBIDDEN
+                status: 403
+                title: Forbidden
+                type: about:blank
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Forbidden
+          headers:
+            WWW-Authenticate:
+              schema:
+                type: string
+                example: Bearer error="insufficient_scope"
+        '404':
+          content:
+            application/problem+json:
+              example:
+                code: BOLETO_NOT_FOUND
+                status: 404
+                title: Not Found
+                type: about:blank
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Record not found
+        '503':
+          content:
+            application/problem+json:
+              example:
+                code: DATABASE_UNAVAILABLE
+                detail: Database is temporarily unavailable.
+                status: 503
+                title: Service Unavailable
+                type: about:blank
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Database temporarily unavailable
+      security:
+        - oauth2:
+            - boletos:audit
+        - bearerJwt: []
+      summary: Read the ordered business audit history.
+      tags:
+        - Audit
+  /api/v1/boletos/{id}/payments:
+    post:
+      description: Requires the `boletos:pay` scope with either authentication option.
+      operationId: simulatePayment
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Snapshot'
+          description: Successful response
+        '400':
+          content:
+            application/problem+json:
+              example:
+                code: INVALID_REQUEST
+                detail: The request is invalid.
+                status: 400
+                title: Bad Request
+                type: about:blank
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Invalid input
+        '401':
+          content:
+            application/problem+json:
+              example:
+                code: UNAUTHORIZED
+                status: 401
+                title: Unauthorized
+                type: about:blank
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Unauthorized
+          headers:
+            WWW-Authenticate:
+              schema:
+                type: string
+                example: Bearer
+        '403':
+          content:
+            application/problem+json:
+              example:
+                code: FORBIDDEN
+                status: 403
+                title: Forbidden
+                type: about:blank
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Forbidden
+          headers:
+            WWW-Authenticate:
+              schema:
+                type: string
+                example: Bearer error="insufficient_scope"
+        '404':
+          content:
+            application/problem+json:
+              example:
+                code: BOLETO_NOT_FOUND
+                status: 404
+                title: Not Found
+                type: about:blank
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Record not found
+        '409':
+          content:
+            application/problem+json:
+              example:
+                code: INVALID_STATE_TRANSITION
+                detail: The requested transition is not valid for the current state.
+                status: 409
+                title: Conflict
+                type: about:blank
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Conflict with the current state or idempotency key
+        '503':
+          content:
+            application/problem+json:
+              example:
+                code: DATABASE_UNAVAILABLE
+                detail: Database is temporarily unavailable.
+                status: 503
+                title: Service Unavailable
+                type: about:blank
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Database temporarily unavailable
+      security:
+        - oauth2:
+            - boletos:pay
+        - bearerJwt: []
+      summary: Simulate payment of an issued, unexpired boleto.
+      tags:
+        - Lifecycle
+  /api/v1/boletos/{id}/pdf:
+    get:
+      description: Requires the `boletos:read` scope with either authentication option.
+      operationId: downloadBoletoPdf
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+          description: Successful response
+          headers:
+            Content-Disposition:
+              description: 'Attachment filename: boleto-{id}.pdf'
+              schema:
+                type: string
+        '400':
+          content:
+            application/problem+json:
+              example:
+                code: INVALID_REQUEST
+                detail: The request is invalid.
+                status: 400
+                title: Bad Request
+                type: about:blank
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Invalid input
+        '401':
+          content:
+            application/problem+json:
+              example:
+                code: UNAUTHORIZED
+                status: 401
+                title: Unauthorized
+                type: about:blank
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Unauthorized
+          headers:
+            WWW-Authenticate:
+              schema:
+                type: string
+                example: Bearer
+        '403':
+          content:
+            application/problem+json:
+              example:
+                code: FORBIDDEN
+                status: 403
+                title: Forbidden
+                type: about:blank
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Forbidden
+          headers:
+            WWW-Authenticate:
+              schema:
+                type: string
+                example: Bearer error="insufficient_scope"
+        '404':
+          content:
+            application/problem+json:
+              example:
+                code: BOLETO_NOT_FOUND
+                status: 404
+                title: Not Found
+                type: about:blank
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Record not found
+        '500':
+          content:
+            application/problem+json:
+              example:
+                code: PDF_RENDER_FAILED
+                detail: Could not render the document.
+                status: 500
+                title: Internal Server Error
+                type: about:blank
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: PDF rendering failed
+        '503':
+          content:
+            application/problem+json:
+              example:
+                code: DATABASE_UNAVAILABLE
+                detail: Database is temporarily unavailable.
+                status: 503
+                title: Service Unavailable
+                type: about:blank
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Database temporarily unavailable
+      security:
+        - oauth2:
+            - boletos:read
+        - bearerJwt: []
+      summary: Download a synthetic PDF. It is not valid for bank payment.
+      tags:
+        - Documents
+  /api/v1/boletos/{id}/revisions:
+    get:
+      description: Requires the `boletos:audit` scope with either authentication option.
+      operationId: listBoletoRevisions
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: query
+          name: before
+          required: false
+          schema:
+            type: integer
+            format: int64
+        - in: query
+          name: size
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 20
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Metadata'
+          description: Successful response
+        '400':
+          content:
+            application/problem+json:
+              example:
+                code: INVALID_REQUEST
+                detail: The request is invalid.
+                status: 400
+                title: Bad Request
+                type: about:blank
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Invalid input
+        '401':
+          content:
+            application/problem+json:
+              example:
+                code: UNAUTHORIZED
+                status: 401
+                title: Unauthorized
+                type: about:blank
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Unauthorized
+          headers:
+            WWW-Authenticate:
+              schema:
+                type: string
+                example: Bearer
+        '403':
+          content:
+            application/problem+json:
+              example:
+                code: FORBIDDEN
+                status: 403
+                title: Forbidden
+                type: about:blank
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Forbidden
+          headers:
+            WWW-Authenticate:
+              schema:
+                type: string
+                example: Bearer error="insufficient_scope"
+        '404':
+          content:
+            application/problem+json:
+              example:
+                code: BOLETO_NOT_FOUND
+                status: 404
+                title: Not Found
+                type: about:blank
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Record not found
+        '503':
+          content:
+            application/problem+json:
+              example:
+                code: DATABASE_UNAVAILABLE
+                detail: Database is temporarily unavailable.
+                status: 503
+                title: Service Unavailable
+                type: about:blank
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Database temporarily unavailable
+      security:
+        - oauth2:
+            - boletos:audit
+        - bearerJwt: []
+      summary: List technical revisions with a backward cursor.
+      tags:
+        - Audit
+  /api/v1/boletos/{id}/revisions/compare:
+    get:
+      description: Requires the `boletos:audit` scope with either authentication option.
+      operationId: compareBoletoRevisions
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: query
+          name: from
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - in: query
+          name: to
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Comparison'
+          description: Successful response
+        '400':
+          content:
+            application/problem+json:
+              example:
+                code: INVALID_REQUEST
+                detail: The request is invalid.
+                status: 400
+                title: Bad Request
+                type: about:blank
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Invalid input
+        '401':
+          content:
+            application/problem+json:
+              example:
+                code: UNAUTHORIZED
+                status: 401
+                title: Unauthorized
+                type: about:blank
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Unauthorized
+          headers:
+            WWW-Authenticate:
+              schema:
+                type: string
+                example: Bearer
+        '403':
+          content:
+            application/problem+json:
+              example:
+                code: FORBIDDEN
+                status: 403
+                title: Forbidden
+                type: about:blank
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Forbidden
+          headers:
+            WWW-Authenticate:
+              schema:
+                type: string
+                example: Bearer error="insufficient_scope"
+        '404':
+          content:
+            application/problem+json:
+              example:
+                code: REVISION_NOT_FOUND
+                status: 404
+                title: Not Found
+                type: about:blank
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Record not found
+        '503':
+          content:
+            application/problem+json:
+              example:
+                code: DATABASE_UNAVAILABLE
+                detail: Database is temporarily unavailable.
+                status: 503
+                title: Service Unavailable
+                type: about:blank
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Database temporarily unavailable
+      security:
+        - oauth2:
+            - boletos:audit
+        - bearerJwt: []
+      summary: Compare the snapshots of two technical revisions.
+      tags:
+        - Audit
+  /api/v1/boletos/{id}/revisions/{revision}:
+    get:
+      description: Requires the `boletos:audit` scope with either authentication option.
+      operationId: getBoletoRevision
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: revision
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detail'
+          description: Successful response
+        '400':
+          content:
+            application/problem+json:
+              example:
+                code: INVALID_REQUEST
+                detail: The request is invalid.
+                status: 400
+                title: Bad Request
+                type: about:blank
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Invalid input
+        '401':
+          content:
+            application/problem+json:
+              example:
+                code: UNAUTHORIZED
+                status: 401
+                title: Unauthorized
+                type: about:blank
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Unauthorized
+          headers:
+            WWW-Authenticate:
+              schema:
+                type: string
+                example: Bearer
+        '403':
+          content:
+            application/problem+json:
+              example:
+                code: FORBIDDEN
+                status: 403
+                title: Forbidden
+                type: about:blank
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Forbidden
+          headers:
+            WWW-Authenticate:
+              schema:
+                type: string
+                example: Bearer error="insufficient_scope"
+        '404':
+          content:
+            application/problem+json:
+              example:
+                code: REVISION_NOT_FOUND
+                status: 404
+                title: Not Found
+                type: about:blank
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Record not found
+        '503':
+          content:
+            application/problem+json:
+              example:
+                code: DATABASE_UNAVAILABLE
+                detail: Database is temporarily unavailable.
+                status: 503
+                title: Service Unavailable
+                type: about:blank
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Database temporarily unavailable
+      security:
+        - oauth2:
+            - boletos:audit
+        - bearerJwt: []
+      summary: Read a technical revision and its recorded state.
+      tags:
+        - Audit
+components:
+  schemas:
+    AuditEntry:
+      type: object
+      properties:
+        correlationId:
+          type: string
+        eventId:
+          type: string
+          format: uuid
+        eventType:
+          type: string
+        newStatus:
+          type: string
+        previousStatus:
+          type: string
+        source:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+    Comparison:
+      type: object
+      properties:
+        changedFields:
+          type: array
+          items:
+            type: string
+        from:
+          type: integer
+          format: int64
+        to:
+          type: integer
+          format: int64
+    Detail:
+      type: object
+      properties:
+        metadata:
+          $ref: '#/components/schemas/Metadata'
+        state:
+          $ref: '#/components/schemas/State'
+    JsonNode:
+      type: object
+    Metadata:
+      type: object
+      properties:
+        actor:
+          type: string
+        correlationId:
+          type: string
+        operation:
+          type: string
+          enum:
+            - ADD
+            - MOD
+            - DEL
+        revision:
+          type: integer
+          format: int64
+        timestamp:
+          type: string
+          format: date-time
+    PageResult:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/Snapshot'
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+    Problem:
+      type: object
+      properties:
+        code:
+          type: string
+        detail:
+          type: string
+        instance:
+          type: string
+        status:
+          type: integer
+          format: int32
+        title:
+          type: string
+        type:
+          type: string
+          example: about:blank
+      required:
+        - code
+        - status
+        - title
+        - type
+    Snapshot:
+      type: object
+      properties:
+        amount:
+          type: number
+        currency:
+          type: string
+        customerId:
+          type: string
+        dueDate:
+          type: string
+          format: date
+        id:
+          type: string
+          format: uuid
+        issuedAt:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum:
+            - EMITIDO
+            - PAGO
+            - VENCIDO
+            - CANCELADO
+    State:
+      type: object
+      properties:
+        amount:
+          type: number
+        createdAt:
+          type: string
+          format: date-time
+        createdBy:
+          type: string
+        dueDate:
+          type: string
+          format: date
+        issuedAt:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum:
+            - EMITIDO
+            - PAGO
+            - VENCIDO
+            - CANCELADO
+        updatedAt:
+          type: string
+          format: date-time
+        updatedBy:
+          type: string
+        version:
+          type: integer
+          format: int64
+  securitySchemes:
+    bearerJwt:
+      bearerFormat: JWT
+      description: Paste an externally acquired access token with the operation's
+        required scope.
+      scheme: bearer
+      type: http
+    oauth2:
+      description: Acquire a service token outside the browser. Configure the token
+        URL for your realm.
+      flows:
+        clientCredentials:
+          scopes:
+            boletos:audit: Read audit records and revisions
+            boletos:cancel: Cancel an issued boleto
+            boletos:issue: Issue boletos
+            boletos:list: List boletos
+            boletos:pay: Simulate payment
+            boletos:read: Read boletos and download PDFs
+            ops:metrics: Read operational metrics
+          tokenUrl: http://127.0.0.1:8180/realms/boleto-lab/protocol/openid-connect/token
+      type: oauth2

@@ -30,13 +30,18 @@ class BoletoSecurity {
     private static final String BOLETOS = "/api/v1/boletos";
 
     @Bean
-    SecurityFilterChain apiSecurity(HttpSecurity http, ObjectMapper json) throws Exception {
+    SecurityFilterChain apiSecurity(HttpSecurity http, ObjectMapper json,
+            @Value("${springdoc.api-docs.enabled:false}") boolean openApiEnabled) throws Exception {
         return http
                 .csrf(AbstractHttpConfigurer::disable)
                 .requestCache(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(access -> access
-                        .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
+                .authorizeHttpRequests(access -> {
+                    if (openApiEnabled) {
+                        access.requestMatchers(HttpMethod.GET, "/v3/api-docs", "/v3/api-docs.yaml",
+                                "/v3/api-docs/swagger-config", "/swagger-ui.html", "/swagger-ui/**").permitAll();
+                    }
+                    access.dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                         .requestMatchers(HttpMethod.GET, "/actuator/health", "/actuator/health/liveness",
                                 "/actuator/health/readiness").permitAll()
                         .requestMatchers(HttpMethod.GET, "/actuator/metrics", "/actuator/metrics/*")
@@ -50,7 +55,8 @@ class BoletoSecurity {
                         .requestMatchers(HttpMethod.POST, BOLETOS + "/*/payments").hasAuthority("SCOPE_boletos:pay")
                         .requestMatchers(HttpMethod.POST, BOLETOS + "/*/cancellations")
                             .hasAuthority("SCOPE_boletos:cancel")
-                        .anyRequest().denyAll())
+                        .anyRequest().denyAll();
+                })
                 .exceptionHandling(errors -> errors
                         .authenticationEntryPoint((request, response, exception) ->
                             problem(response, json, 401, "Unauthorized", "UNAUTHORIZED", "Bearer"))
