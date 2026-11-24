@@ -18,16 +18,31 @@ flowchart TB
 
 | Nível | Tarefa Gradle | Dependências | Escopo atual |
 | --- | --- | --- | --- |
-| Unitário | `test` | Nenhuma infraestrutura externa | validação de emissão, estado do boleto, tipos de eventos e renderização de documento. Mockito é usado apenas no colaborador de renderização. |
+| Unitário da API | `:test` | Nenhuma infraestrutura externa | validação de emissão, estado do boleto, tipos de eventos e renderização de documento. Mockito é usado apenas no colaborador de renderização. |
 | Integração | `integrationTest` | Spring, PostgreSQL e Kafka descartáveis | HTTP interno, Flyway, JPA, auditoria, idempotência, Outbox, deduplicação de eventos e concorrência. |
+| Contrato e integração do MCP | `:boleto-analytics-mcp:test` | Spring e PostgreSQL descartável | contrato MCP, validação de JWT e consultas com papel de leitura. |
 
 Não há atualmente cliente HTTP externo de negócio. Por isso, WireMock não é uma dependência do projeto: a verificação de JWKS usa um servidor JDK local e não simula uma integração bancária inexistente.
 
 ## Containers e assincronia
 
-`PostgresIntegrationTest` mantém um PostgreSQL `postgres:16.11-alpine` por JVM de testes. Cada classe usa um esquema `bpl_it_*` próprio; isso permite reutilizar o processo sem compartilhar dados de negócio. `BoletoEventsPostgresTests` inicia também um Kafka `apache/kafka:3.9.1`, somente para o fluxo real do Outbox.
+`PostgresIntegrationTest` inicia um PostgreSQL `postgres:16.11-alpine`
+por JVM de testes de integração da API. Cada cenário que solicita um nome
+`bpl_it_*` recebe um banco próprio dentro desse contêiner. O Flyway cria
+o esquema de negócio e um `analytics` nesse banco, isolando também as
+views analíticas entre cenários. O módulo MCP tem seu próprio PostgreSQL
+descartável. Por padrão, o teste do Outbox também inicia um Kafka
+`apache/kafka:4.2.2`.
 
-Os containers são descartados ao terminar a execução e não usam reutilização persistente. Testcontainers requer um daemon Docker acessível. No CI hospedado do GitHub Actions, o runner disponibiliza Docker; localmente, inicie o Docker Desktop antes de executar a suíte de integração.
+Os testes recebem a URL JDBC do Testcontainers e o PostgreSQL descartável
+é parado ao encerrar a JVM, sem reutilização persistente. O banco de
+desenvolvimento do Compose e seus esquemas `public` e `analytics` ficam
+fora desse ciclo. A suíte atual não remove esquemas de execuções legadas
+que já existam no banco de desenvolvimento.
+
+O [workflow Test coverage](https://github.com/jonatadev/BoletoPaymentLab/blob/main/.github/workflows/coverage.yaml)
+executa as suítes de integração e do MCP em um runner Linux com Docker.
+Localmente, inicie o Docker Desktop antes de executar essas suítes.
 
 As verificações assíncronas usam Awaitility, com timeout limitado e condição observável. Não são usados `Thread.sleep` como sincronização de mensagens.
 
