@@ -10,9 +10,10 @@ import java.time.ZoneOffset;
 import org.junit.jupiter.api.Test;
 
 class AnalyticsDateRangesTests {
-    private final AnalyticsDateRanges ranges = new AnalyticsDateRanges(
-            Clock.fixed(Instant.parse("2026-02-10T12:00:00Z"), ZoneOffset.UTC),
-            new AnalyticsProperties("analytics", "issuer", "jwks", 30, 366, 5));
+    private final AnalyticsDateRanges ranges =
+            new AnalyticsDateRanges(
+                    Clock.fixed(Instant.parse("2026-02-10T12:00:00Z"), ZoneOffset.UTC),
+                    new AnalyticsProperties("analytics", "issuer", "jwks", 30, 366, 5));
 
     @Test
     void shouldApplyTheApprovedThirtyDayDefaultRange() {
@@ -24,12 +25,16 @@ class AnalyticsDateRangesTests {
 
     @Test
     void shouldRejectInvertedAndExcessiveRanges() {
-        assertThatThrownBy(() -> ranges.required(new AnalyticsModels.DateRangeInput(
-                LocalDate.of(2026, 2, 11), LocalDate.of(2026, 2, 10))))
+        assertThatThrownBy(() ->
+                        ranges.required(
+                                new AnalyticsModels.DateRangeInput(
+                                        LocalDate.of(2026, 2, 11), LocalDate.of(2026, 2, 10))))
                 .isInstanceOf(AnalyticsValidationException.class)
                 .hasMessageContaining("must not be before");
-        assertThatThrownBy(() -> ranges.required(new AnalyticsModels.DateRangeInput(
-                LocalDate.of(2025, 1, 1), LocalDate.of(2026, 2, 10))))
+        assertThatThrownBy(() ->
+                        ranges.required(
+                                new AnalyticsModels.DateRangeInput(
+                                        LocalDate.of(2025, 1, 1), LocalDate.of(2026, 2, 10))))
                 .isInstanceOf(AnalyticsValidationException.class)
                 .hasMessageContaining("maximum");
     }

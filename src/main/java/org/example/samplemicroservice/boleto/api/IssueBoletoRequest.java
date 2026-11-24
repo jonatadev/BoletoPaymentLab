@@ -8,8 +8,10 @@ import tools.jackson.databind.JsonNode;
 
 record IssueBoletoRequest(String customerId, BigDecimal amount, LocalDate dueDate) {
     static IssueBoletoRequest from(JsonNode json) {
-        if (!json.isObject() || json.size() != 3
-                || !json.path("customerId").isString() || !json.path("amount").isNumber()
+        if (!json.isObject()
+                || json.size() != 3
+                || !json.path("customerId").isString()
+                || !json.path("amount").isNumber()
                 || !json.path("dueDate").isString()) {
             throw BoletoFailure.INVALID_REQUEST.exception();
         }
@@ -18,9 +20,7 @@ record IssueBoletoRequest(String customerId, BigDecimal amount, LocalDate dueDat
             throw BoletoFailure.INVALID_REQUEST.exception();
         }
         return new IssueBoletoRequest(
-                json.path("customerId").stringValue(),
-                json.path("amount").decimalValue(),
-                LocalDate.parse(date));
+                json.path("customerId").stringValue(), json.path("amount").decimalValue(), LocalDate.parse(date));
     }
 
     IssuanceInput toInput() {

@@ -8,11 +8,11 @@ import java.util.UUID;
 
 @Entity
 public class IdempotentIssuance {
-    @Id
-    private UUID id;
+    @Id private UUID id;
     private String customerId;
     private String operation;
     private String requestKey;
+
     @OneToOne(optional = false)
     @JoinColumn(name = "boleto_id")
     private Boleto boleto;
@@ -27,5 +27,7 @@ public class IdempotentIssuance {
         this.boleto = boleto;
     }
 
-    public Boleto boleto() { return boleto; }
+    public Boleto boleto() {
+        return boleto;
+    }
 }

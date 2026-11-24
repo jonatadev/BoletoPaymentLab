@@ -30,43 +30,54 @@ final class IntegrationIdentity implements AutoCloseable {
     IntegrationIdentity() throws Exception {
         key = new RSAKeyGenerator(2048).keyID("integration").generate();
         server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-        server.createContext("/jwks", exchange -> {
-            byte[] payload = new JWKSet(key.toPublicJWK()).toString().getBytes(StandardCharsets.UTF_8);
-            try (exchange) {
-                exchange.getResponseHeaders().set("Content-Type", "application/json");
-                exchange.sendResponseHeaders(200, payload.length);
-                exchange.getResponseBody().write(payload);
-            }
-        });
-        server.createContext("/v1/traces", exchange -> {
-            try (exchange) {
-                URI destination = forwardTracesTo;
-                if (destination != null) {
-                    byte[] body = exchange.getRequestBody().readAllBytes();
-                    var request = HttpRequest.newBuilder(destination).timeout(Duration.ofSeconds(3))
-                            .header("Content-Type", exchange.getRequestHeaders().getFirst("Content-Type"));
-                    String encoding = exchange.getRequestHeaders().getFirst("Content-Encoding");
-                    if (encoding != null) {
-                        request.header("Content-Encoding", encoding);
+        server.createContext(
+                "/jwks",
+                exchange -> {
+                    byte[] payload = new JWKSet(key.toPublicJWK()).toString().getBytes(StandardCharsets.UTF_8);
+                    try (exchange) {
+                        exchange.getResponseHeaders().set("Content-Type", "application/json");
+                        exchange.sendResponseHeaders(200, payload.length);
+                        exchange.getResponseBody().write(payload);
                     }
-                    try {
-                        var response = HttpClient.newHttpClient().send(request.POST(
-                                HttpRequest.BodyPublishers.ofByteArray(body)).build(),
-                                HttpResponse.BodyHandlers.ofByteArray());
-                        exchange.getResponseHeaders().set("Content-Type", "application/x-protobuf");
-                        exchange.sendResponseHeaders(response.statusCode(), response.body().length);
-                        exchange.getResponseBody().write(response.body());
-                    } catch (InterruptedException exception) {
-                        Thread.currentThread().interrupt();
+                });
+        server.createContext(
+                "/v1/traces",
+                exchange -> {
+                    try (exchange) {
+                        URI destination = forwardTracesTo;
+                        if (destination != null) {
+                            byte[] body = exchange.getRequestBody().readAllBytes();
+                            var request =
+                                    HttpRequest.newBuilder(destination)
+                                            .timeout(Duration.ofSeconds(3))
+                                            .header(
+                                                    "Content-Type",
+                                                    exchange.getRequestHeaders().getFirst("Content-Type"));
+                            String encoding = exchange.getRequestHeaders().getFirst("Content-Encoding");
+                            if (encoding != null) {
+                                request.header("Content-Encoding", encoding);
+                            }
+                            try {
+                                var response =
+                                        HttpClient.newHttpClient()
+                                                .send(
+                                                        request.POST(HttpRequest.BodyPublishers.ofByteArray(body))
+                                                                .build(),
+                                                        HttpResponse.BodyHandlers.ofByteArray());
+                                exchange.getResponseHeaders().set("Content-Type", "application/x-protobuf");
+                                exchange.sendResponseHeaders(response.statusCode(), response.body().length);
+                                exchange.getResponseBody().write(response.body());
+                            } catch (InterruptedException exception) {
+                                Thread.currentThread().interrupt();
+                                exchange.sendResponseHeaders(503, -1);
+                            }
+                            return;
+                        }
+                        exchange.getRequestBody().transferTo(java.io.OutputStream.nullOutputStream());
+                        failedExports.incrementAndGet();
                         exchange.sendResponseHeaders(503, -1);
                     }
-                    return;
-                }
-                exchange.getRequestBody().transferTo(java.io.OutputStream.nullOutputStream());
-                failedExports.incrementAndGet();
-                exchange.sendResponseHeaders(503, -1);
-            }
-        });
+                });
         server.start();
     }
 
@@ -75,9 +86,16 @@ final class IntegrationIdentity implements AutoCloseable {
     }
 
     String token(String scopes, String audience) throws Exception {
-        var token = new SignedJWT(new JWSHeader.Builder(JWSAlgorithm.RS256).keyID(key.getKeyID()).build(),
-                new JWTClaimsSet.Builder().issuer(ISSUER).audience(audience).subject("synthetic-client")
-                        .expirationTime(Date.from(Instant.now().plusSeconds(300))).claim("scope", scopes).build());
+        var token =
+                new SignedJWT(
+                        new JWSHeader.Builder(JWSAlgorithm.RS256).keyID(key.getKeyID()).build(),
+                        new JWTClaimsSet.Builder()
+                                .issuer(ISSUER)
+                                .audience(audience)
+                                .subject("synthetic-client")
+                                .expirationTime(Date.from(Instant.now().plusSeconds(300)))
+                                .claim("scope", scopes)
+                                .build());
         token.sign(new RSASSASigner(key));
         return token.serialize();
     }

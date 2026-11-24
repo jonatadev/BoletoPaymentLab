@@ -32,8 +32,13 @@ public class BoletoService {
     private final TransactionTemplate issuanceTransaction;
     private final TransactionTemplate recoveryTransaction;
 
-    public BoletoService(BoletoRepository boletos, IssuanceRepository issuances, Clock clock,
-            PlatformTransactionManager transactions, BoletoJournal journal, BoletoTelemetry telemetry) {
+    public BoletoService(
+            BoletoRepository boletos,
+            IssuanceRepository issuances,
+            Clock clock,
+            PlatformTransactionManager transactions,
+            BoletoJournal journal,
+            BoletoTelemetry telemetry) {
         this.boletos = boletos;
         this.issuances = issuances;
         this.clock = clock;
@@ -53,17 +58,20 @@ public class BoletoService {
             throw BoletoFailure.INVALID_REQUEST.exception();
         }
         try {
-            return Objects.requireNonNull(issuanceTransaction.execute(status ->
-                    telemetry.observe("idempotency", () -> issueInTransaction(key, input))));
+            return Objects.requireNonNull(
+                    issuanceTransaction.execute(
+                            status -> telemetry.observe("idempotency", () -> issueInTransaction(key, input))));
         } catch (DataIntegrityViolationException exception) {
             if (!(exception.getCause() instanceof ConstraintViolationException violation)
                     || !"uq_issuance_scope".equalsIgnoreCase(violation.getConstraintName())) {
                 throw exception;
             }
-            return Objects.requireNonNull(recoveryTransaction.execute(status -> issuances
-                    .findByCustomerIdAndOperationAndRequestKey(input.customerId(), OPERATION, key)
-                    .map(existing -> replay(input, existing.boleto()))
-                    .orElseThrow(() -> exception)));
+            return Objects.requireNonNull(
+                    recoveryTransaction.execute(status ->
+                            issuances
+                                    .findByCustomerIdAndOperationAndRequestKey(input.customerId(), OPERATION, key)
+                                    .map(existing -> replay(input, existing.boleto()))
+                                    .orElseThrow(() -> exception)));
         }
     }
 
@@ -76,7 +84,8 @@ public class BoletoService {
         if (!issuances.tryLock(lockId(customerId, key))) {
             throw BoletoFailure.OPERATION_IN_PROGRESS.exception();
         }
-        return issuances.findByCustomerIdAndOperationAndRequestKey(customerId, OPERATION, key)
+        return issuances
+                .findByCustomerIdAndOperationAndRequestKey(customerId, OPERATION, key)
                 .map(existing -> replay(input, existing.boleto()))
                 .orElseGet(() -> create(input, key));
     }
@@ -92,14 +101,22 @@ public class BoletoService {
         if (!input.dueDate().isAfter(LocalDate.now(clock))) {
             throw BoletoFailure.INVALID_REQUEST.exception();
         }
-        return telemetry.observe("issuance.persist", () -> {
-            Instant now = clock.instant();
-            Boleto boleto = boletos.save(new Boleto(
-                    UUID.randomUUID(), input.customerId(), input.amount(), input.dueDate(), now));
-            issuances.saveAndFlush(new IdempotentIssuance(input.customerId(), OPERATION, key, boleto));
-            journal.record(boleto, null, "API", now);
-            return new IssueResult(Snapshot.from(boleto, LocalDate.now(clock)), true);
-        });
+        return telemetry.observe(
+                "issuance.persist",
+                () -> {
+                    Instant now = clock.instant();
+                    Boleto boleto =
+                            boletos.save(
+                                    new Boleto(
+                                            UUID.randomUUID(),
+                                            input.customerId(),
+                                            input.amount(),
+                                            input.dueDate(),
+                                            now));
+                    issuances.saveAndFlush(new IdempotentIssuance(input.customerId(), OPERATION, key, boleto));
+                    journal.record(boleto, null, "API", now);
+                    return new IssueResult(Snapshot.from(boleto, LocalDate.now(clock)), true);
+                });
     }
 
     private static long lockId(String customerId, String key) {

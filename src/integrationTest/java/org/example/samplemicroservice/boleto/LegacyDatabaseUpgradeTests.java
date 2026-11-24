@@ -21,8 +21,9 @@ class LegacyDatabaseUpgradeTests extends PostgresIntegrationTest {
         UUID id = UUID.randomUUID();
         LocalDate due = LocalDate.of(2035, 8, 30);
         try (var connection = DriverManager.getConnection(url, user, password);
-                var insert = connection.prepareStatement(
-                        "insert into boleto (id, customer_id, amount, due_date) values (?, ?, ?, ?)")) {
+                var insert =
+                        connection.prepareStatement(
+                                "insert into boleto (id, customer_id, amount, due_date) values (?, ?, ?, ?)")) {
             insert.setObject(1, id);
             insert.setString(2, "legacy-synthetic");
             insert.setBigDecimal(3, new BigDecimal("17.32"));
@@ -30,13 +31,18 @@ class LegacyDatabaseUpgradeTests extends PostgresIntegrationTest {
             assertThat(insert.executeUpdate()).isEqualTo(1);
         }
 
-        var migration = Flyway.configure().dataSource(url, user, password).schemas(schema)
-                .locations("classpath:db/migration", "classpath:db/vendor/postgresql").load();
+        var migration =
+                Flyway.configure()
+                        .dataSource(url, user, password)
+                        .schemas(schema)
+                        .locations("classpath:db/migration", "classpath:db/vendor/postgresql")
+                        .load();
         assertThat(migration.migrate().migrationsExecuted).isEqualTo(7);
         migration.validate();
         try (var connection = DriverManager.getConnection(url, user, password);
-                var query = connection.prepareStatement(
-                        "select id, amount, due_date, status, issued_at, version, created_at, updated_at, created_by, updated_by from boleto where id = ?")) {
+                var query =
+                        connection.prepareStatement(
+                                "select id, amount, due_date, status, issued_at, version, created_at, updated_at, created_by, updated_by from boleto where id = ?")) {
             query.setObject(1, id);
             try (var row = query.executeQuery()) {
                 assertThat(row.next()).isTrue();

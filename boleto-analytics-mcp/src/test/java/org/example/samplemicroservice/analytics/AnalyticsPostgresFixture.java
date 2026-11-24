@@ -11,10 +11,15 @@ final class AnalyticsPostgresFixture {
 
     static {
         POSTGRES.start();
-        Flyway.configure().dataSource(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword())
-                .locations("classpath:migration", "classpath:vendor/postgresql").load().migrate();
-        try (var connection = DriverManager.getConnection(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(),
-                POSTGRES.getPassword()); var statement = connection.createStatement()) {
+        Flyway.configure()
+                .dataSource(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword())
+                .locations("classpath:migration", "classpath:vendor/postgresql")
+                .load()
+                .migrate();
+        try (var connection =
+                        DriverManager.getConnection(
+                                POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword());
+                var statement = connection.createStatement()) {
             statement.execute("create role " + READER + " login password '" + READER_PASSWORD + "'");
             statement.execute("grant connect on database " + POSTGRES.getDatabaseName() + " to " + READER);
             statement.execute("grant usage on schema analytics to " + READER);
@@ -26,6 +31,5 @@ final class AnalyticsPostgresFixture {
         Runtime.getRuntime().addShutdownHook(new Thread(POSTGRES::stop, "analytics-test-postgres-stop"));
     }
 
-    private AnalyticsPostgresFixture() {
-    }
+    private AnalyticsPostgresFixture() {}
 }

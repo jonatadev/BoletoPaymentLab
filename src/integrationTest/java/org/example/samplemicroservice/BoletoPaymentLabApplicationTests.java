@@ -12,12 +12,10 @@ import org.springframework.test.web.servlet.MockMvc;
 @SpringBootTest(properties = "BPL_OPENAPI_ENABLED=false")
 @AutoConfigureMockMvc
 class BoletoPaymentLabApplicationTests {
-    @Autowired
-    private MockMvc mvc;
+    @Autowired private MockMvc mvc;
 
     @Test
-    void contextLoads() {
-    }
+    void contextLoads() {}
 
     @Test
     void shouldKeepDocumentationRoutesClosedByDefault() throws Exception {

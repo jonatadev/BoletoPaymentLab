@@ -27,16 +27,21 @@ public class BoletoQueries {
 
     @Transactional(readOnly = true, timeout = 7)
     public Snapshot find(UUID id) {
-        return boletos.findById(id).map(boleto -> Snapshot.from(boleto, LocalDate.now(clock)))
+        return boletos.findById(id)
+                .map(boleto -> Snapshot.from(boleto, LocalDate.now(clock)))
                 .orElseThrow(BoletoFailure.BOLETO_NOT_FOUND::exception);
     }
 
     @Transactional(readOnly = true, timeout = 7)
-    public PageResult list(String customer, BoletoStatus status, LocalDate from, LocalDate to,
-            int page, int size, String sort) {
+    public PageResult list(
+            String customer, BoletoStatus status, LocalDate from, LocalDate to, int page, int size, String sort) {
         String[] order = sort.split(",", -1);
-        if (size < 1 || size > 100 || page < 0 || (long) page * size > 100_000
-                || order.length != 2 || !SORT_FIELDS.contains(order[0])
+        if (size < 1
+                || size > 100
+                || page < 0
+                || (long) page * size > 100_000
+                || order.length != 2
+                || !SORT_FIELDS.contains(order[0])
                 || !List.of("asc", "desc").contains(order[1])
                 || (from != null && to != null && from.isAfter(to))
                 || (customer != null && !customer.matches("[A-Za-z0-9._-]{1,120}"))) {
@@ -48,16 +53,19 @@ public class BoletoQueries {
             spec = spec.and((row, query, cb) -> cb.equal(row.get("customerId"), customer));
         }
         if (status != null) {
-            spec = spec.and((row, query, cb) -> {
-                var persisted = row.<BoletoStatus>get("status");
-                var due = row.<LocalDate>get("dueDate");
-                return switch (status) {
-                    case VENCIDO -> cb.or(cb.equal(persisted, BoletoStatus.VENCIDO),
-                            cb.and(cb.equal(persisted, BoletoStatus.EMITIDO), cb.lessThan(due, today)));
-                    case EMITIDO -> cb.and(cb.equal(persisted, status), cb.greaterThanOrEqualTo(due, today));
-                    case PAGO, CANCELADO -> cb.equal(persisted, status);
-                };
-            });
+            spec =
+                    spec.and((row, query, cb) -> {
+                        var persisted = row.<BoletoStatus>get("status");
+                        var due = row.<LocalDate>get("dueDate");
+                        return switch (status) {
+                            case VENCIDO ->
+                                    cb.or(
+                                            cb.equal(persisted, BoletoStatus.VENCIDO),
+                                            cb.and(cb.equal(persisted, BoletoStatus.EMITIDO), cb.lessThan(due, today)));
+                            case EMITIDO -> cb.and(cb.equal(persisted, status), cb.greaterThanOrEqualTo(due, today));
+                            case PAGO, CANCELADO -> cb.equal(persisted, status);
+                        };
+                    });
         }
         try {
             if (from != null) {
@@ -73,8 +81,12 @@ public class BoletoQueries {
                 sorting = sorting.and(Sort.by("id"));
             }
             var result = boletos.findAll(spec, PageRequest.of(page, size, sorting));
-            return new PageResult(result.map(boleto -> Snapshot.from(boleto, today)).getContent(),
-                    page, size, result.getTotalElements(), result.getTotalPages());
+            return new PageResult(
+                    result.map(boleto -> Snapshot.from(boleto, today)).getContent(),
+                    page,
+                    size,
+                    result.getTotalElements(),
+                    result.getTotalPages());
         } catch (DateTimeException exception) {
             throw BoletoFailure.INVALID_REQUEST.exception();
         }

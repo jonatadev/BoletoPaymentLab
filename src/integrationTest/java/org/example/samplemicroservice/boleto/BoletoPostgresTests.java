@@ -20,10 +20,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.springframework.boot.test.system.CapturedOutput;
-import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.example.samplemicroservice.boleto.application.BoletoService;
@@ -31,12 +27,16 @@ import org.example.samplemicroservice.boleto.application.IssuanceInput;
 import org.example.samplemicroservice.boleto.application.Snapshot;
 import org.example.samplemicroservice.boleto.document.PdfBoxRenderer;
 import org.example.samplemicroservice.boleto.document.PdfRenderer;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
@@ -70,9 +70,10 @@ class BoletoPostgresTests extends PostgresIntegrationTest {
     @DynamicPropertySource
     static void postgres(DynamicPropertyRegistry properties) throws Exception {
         identity = new IntegrationIdentity();
-        allPermissions = identity.token(
-                "boletos:issue boletos:read boletos:list boletos:pay boletos:cancel boletos:audit ops:metrics",
-                "boleto-api");
+        allPermissions =
+                identity.token(
+                        "boletos:issue boletos:read boletos:list boletos:pay boletos:cancel boletos:audit ops:metrics",
+                        "boleto-api");
         properties.add("spring.datasource.url", () -> postgresUrl(SCHEMA));
         properties.add("spring.datasource.username", PostgresIntegrationTest::postgresUser);
         properties.add("spring.datasource.password", PostgresIntegrationTest::postgresPassword);
@@ -146,14 +147,18 @@ class BoletoPostgresTests extends PostgresIntegrationTest {
         var unauthenticated = client.send(raw(path).GET().build(), HttpResponse.BodyHandlers.ofByteArray());
         assertProblem(unauthenticated, 401, "UNAUTHORIZED");
         var readOnly = identity.token("boletos:read", "boleto-api");
-        var forbidden = client.send(raw(path + "/" + first).header("Authorization", "Bearer " + readOnly)
-                .GET().build(), HttpResponse.BodyHandlers.ofByteArray());
+        var forbidden =
+                client.send(
+                        raw(path + "/" + first).header("Authorization", "Bearer " + readOnly).GET().build(),
+                        HttpResponse.BodyHandlers.ofByteArray());
         assertProblem(forbidden, 403, "FORBIDDEN");
 
         Instant paymentTime = ISSUE_TIME.plusSeconds(60);
         clock.time.set(paymentTime);
-        var paid = client.send(request("/" + id + "/payments")
-                .POST(HttpRequest.BodyPublishers.noBody()).build(), HttpResponse.BodyHandlers.ofByteArray());
+        var paid =
+                client.send(
+                        request("/" + id + "/payments").POST(HttpRequest.BodyPublishers.noBody()).build(),
+                        HttpResponse.BodyHandlers.ofByteArray());
         assertThat(paid.statusCode()).isEqualTo(200);
         var history = json.readTree(get(path).body());
         assertThat(history.size()).isEqualTo(2);
@@ -175,21 +180,30 @@ class BoletoPostgresTests extends PostgresIntegrationTest {
         assertThat(json.readTree(get(path + "?before=" + second + "&size=1").body()).get(0)).isEqualTo(initial);
         assertProblem(get(path + "/" + Long.MAX_VALUE), 404, "REVISION_NOT_FOUND");
 
-        var eventCorrelations = jdbc.sql("""
-                select a.correlation_id
-                from boleto_audit a join boleto_outbox o on o.event_id = a.event_id
-                where a.boleto_id = :id and a.correlation_id = o.correlation_id
-                order by a.aggregate_version
-                """).param("id", UUID.fromString(id)).query(String.class).list();
-        assertThat(eventCorrelations).containsExactly(
-                initial.get("correlationId").asText(), latest.get("correlationId").asText());
+        var eventCorrelations =
+                jdbc.sql(
+                                """
+                                select a.correlation_id
+                                from boleto_audit a join boleto_outbox o on o.event_id = a.event_id
+                                where a.boleto_id = :id and a.correlation_id = o.correlation_id
+                                order by a.aggregate_version
+                                """)
+                        .param("id", UUID.fromString(id))
+                        .query(String.class)
+                        .list();
+        assertThat(eventCorrelations)
+                .containsExactly(initial.get("correlationId").asText(), latest.get("correlationId").asText());
 
         var expiring = post(key(), body("revision-expiry", "10.00", DUE_DATE));
         String expiringId = field(expiring, "id");
         clock.time.set(Instant.parse("2026-01-05T04:00:00Z"));
         assertThat(json.readTree(get("/" + expiringId + "/revisions").body()).size()).isEqualTo(1);
-        assertThat(jdbc.sql("select status from boleto where id = :id").param("id", UUID.fromString(expiringId))
-                .query(String.class).single()).isEqualTo("EMITIDO");
+        assertThat(
+                        jdbc.sql("select status from boleto where id = :id")
+                                .param("id", UUID.fromString(expiringId))
+                                .query(String.class)
+                                .single())
+                .isEqualTo("EMITIDO");
     }
 
     @Test
@@ -263,9 +277,14 @@ class BoletoPostgresTests extends PostgresIntegrationTest {
         assertThat(original.statusCode()).isEqualTo(201);
         assertThat(other.statusCode()).isEqualTo(201);
         UUID otherId = UUID.fromString(field(other, "id"));
-        assertThatThrownBy(() -> jdbc.sql("""
-                update idempotent_issuance set request_key = :key where boleto_id = :id
-                """).param("key", key).param("id", otherId).update())
+        assertThatThrownBy(() ->
+                        jdbc.sql(
+                                        """
+                                        update idempotent_issuance set request_key = :key where boleto_id = :id
+                                        """)
+                                .param("key", key)
+                                .param("id", otherId)
+                                .update())
                 .isInstanceOf(DataIntegrityViolationException.class)
                 .hasMessageContaining("uq_issuance_scope");
     }
@@ -295,9 +314,12 @@ class BoletoPostgresTests extends PostgresIntegrationTest {
         assertProblem(post(key, body(customer, "1000000", DUE_DATE)), 400, "INVALID_REQUEST");
         assertProblem(post(key, body(customer, "10", LocalDate.parse("2026-01-01"))), 400, "INVALID_REQUEST");
         assertProblem(post(key, body("", "10", DUE_DATE)), 400, "INVALID_REQUEST");
-        assertProblem(post(key, body(customer, "10", DUE_DATE).replace("2026-01-03", "2026-02-30")), 400, "INVALID_REQUEST");
-        assertProblem(post(key, body(customer, "10", DUE_DATE).replace("\"amount\":10", "\"amount\":10,\"amount\":11")),
-                400, "INVALID_REQUEST");
+        assertProblem(
+                post(key, body(customer, "10", DUE_DATE).replace("2026-01-03", "2026-02-30")), 400, "INVALID_REQUEST");
+        assertProblem(
+                post(key, body(customer, "10", DUE_DATE).replace("\"amount\":10", "\"amount\":10,\"amount\":11")),
+                400,
+                "INVALID_REQUEST");
         assertThat(countFor(customer)).isZero();
         var first = post(key, body(customer, "0.01", LocalDate.parse("2026-01-02")));
         var second = post(key, body("customer-other", "999999.99", DUE_DATE));
@@ -308,22 +330,26 @@ class BoletoPostgresTests extends PostgresIntegrationTest {
 
     private CompletableFuture<BoletoService.IssueResult> holdIssuance(
             String customer, String key, CountDownLatch hold, CountDownLatch release, boolean rollback) {
-        return CompletableFuture.supplyAsync(() -> new TransactionTemplate(transactions).execute(status -> {
-            var result = service.issue(key, new IssuanceInput(customer, new java.math.BigDecimal("10"), DUE_DATE));
-            hold.countDown();
-            try {
-                if (!release.await(20, TimeUnit.SECONDS)) {
-                    throw new AssertionError("Timed out waiting for the HTTP contender");
-                }
-            } catch (InterruptedException exception) {
-                Thread.currentThread().interrupt();
-                throw new AssertionError(exception);
-            }
-            if (rollback) {
-                status.setRollbackOnly();
-            }
-            return result;
-        }));
+        return CompletableFuture.supplyAsync(() ->
+                new TransactionTemplate(transactions)
+                        .execute(status -> {
+                            var result =
+                                    service.issue(
+                                            key, new IssuanceInput(customer, new java.math.BigDecimal("10"), DUE_DATE));
+                            hold.countDown();
+                            try {
+                                if (!release.await(20, TimeUnit.SECONDS)) {
+                                    throw new AssertionError("Timed out waiting for the HTTP contender");
+                                }
+                            } catch (InterruptedException exception) {
+                                Thread.currentThread().interrupt();
+                                throw new AssertionError(exception);
+                            }
+                            if (rollback) {
+                                status.setRollbackOnly();
+                            }
+                            return result;
+                        }));
     }
 
     private void assertInProgress(HttpResponse<byte[]> response) {
@@ -333,19 +359,23 @@ class BoletoPostgresTests extends PostgresIntegrationTest {
 
     private void assertProblem(HttpResponse<byte[]> response, int status, String code) {
         assertThat(response.statusCode()).isEqualTo(status);
-        assertThat(response.headers().firstValue("Content-Type")).hasValueSatisfying(
-                value -> assertThat(value).startsWith("application/problem+json"));
+        assertThat(response.headers().firstValue("Content-Type"))
+                .hasValueSatisfying(value -> assertThat(value).startsWith("application/problem+json"));
         assertThat(field(response, "code")).isEqualTo(code);
     }
 
     private int countFor(String customer) {
         return jdbc.sql("select count(*) from boleto where customer_id = :customer")
-                .param("customer", customer).query(Integer.class).single();
+                .param("customer", customer)
+                .query(Integer.class)
+                .single();
     }
 
     private int eventCount(UUID boleto) {
         return jdbc.sql("select count(*) from boleto_outbox where aggregate_id = :boleto")
-                .param("boleto", boleto).query(Integer.class).single();
+                .param("boleto", boleto)
+                .query(Integer.class)
+                .single();
     }
 
     @Test
@@ -355,6 +385,25 @@ class BoletoPostgresTests extends PostgresIntegrationTest {
         assertProblem(authenticatedGet(identity.token("boletos:list", "different-api")), 401, "UNAUTHORIZED");
         assertProblem(authenticatedGet(identity.token("boletos:read", "boleto-api")), 403, "FORBIDDEN");
         assertThat(get("").statusCode()).isEqualTo(200);
+    }
+
+    @Test
+    void shouldRejectBoletoIssuanceWithoutHeaderCredentials() throws Exception {
+        String customer = "csrf-synthetic";
+        var response =
+                client.send(
+                        raw("").header("Origin", "https://other.example.test")
+                                .header("Cookie", "access_token=" + allPermissions)
+                                .header("Content-Type", "application/json")
+                                .header("Idempotency-Key", key())
+                                .POST(HttpRequest.BodyPublishers.ofString(body(customer, "10", DUE_DATE)))
+                                .build(),
+                        HttpResponse.BodyHandlers.ofByteArray());
+
+        assertProblem(response, 401, "UNAUTHORIZED");
+        assertThat(response.headers().firstValue("WWW-Authenticate")).contains("Bearer");
+        assertThat(response.headers().allValues("Set-Cookie")).noneMatch(cookie -> cookie.startsWith("JSESSIONID="));
+        assertThat(countFor(customer)).isZero();
     }
 
     private HttpResponse<byte[]> authenticatedGet(String token) throws Exception {
@@ -369,10 +418,14 @@ class BoletoPostgresTests extends PostgresIntegrationTest {
     void shouldKeepAuditAndOutboxConsistentAcrossConcurrentTerminalCommands() throws Exception {
         var issued = post(key(), body("customer-transition", "10", DUE_DATE));
         String id = field(issued, "id");
-        var pay = client.sendAsync(request("/" + id + "/payments")
-                .POST(HttpRequest.BodyPublishers.noBody()).build(), HttpResponse.BodyHandlers.ofByteArray());
-        var cancel = client.sendAsync(request("/" + id + "/cancellations")
-                .POST(HttpRequest.BodyPublishers.noBody()).build(), HttpResponse.BodyHandlers.ofByteArray());
+        var pay =
+                client.sendAsync(
+                        request("/" + id + "/payments").POST(HttpRequest.BodyPublishers.noBody()).build(),
+                        HttpResponse.BodyHandlers.ofByteArray());
+        var cancel =
+                client.sendAsync(
+                        request("/" + id + "/cancellations").POST(HttpRequest.BodyPublishers.noBody()).build(),
+                        HttpResponse.BodyHandlers.ofByteArray());
         var replies = java.util.List.of(pay.get(10, TimeUnit.SECONDS), cancel.get(10, TimeUnit.SECONDS));
         assertThat(replies).extracting(HttpResponse::statusCode).containsExactlyInAnyOrder(200, 409);
         var rejected = replies.stream().filter(reply -> reply.statusCode() == 409).findFirst().orElseThrow();
@@ -392,7 +445,8 @@ class BoletoPostgresTests extends PostgresIntegrationTest {
         String id = field(issued, "id");
         post(key(), body("customer-expiry", "20", DUE_DATE));
         clock.time.set(Instant.parse("2026-01-05T00:00:00Z"));
-        var listing = get("?customerId=customer-expiry&status=VENCIDO&from=2026-01-01&to=2026-01-01&size=1&sort=amount,asc");
+        var listing =
+                get("?customerId=customer-expiry&status=VENCIDO&from=2026-01-01&to=2026-01-01&size=1&sort=amount,asc");
         assertThat(listing.statusCode()).isEqualTo(200);
         var list = json.readTree(listing.body());
         assertThat(list.path("totalElements").intValue()).isEqualTo(2);
@@ -402,8 +456,12 @@ class BoletoPostgresTests extends PostgresIntegrationTest {
         assertProblem(get("?sort=customerId,asc"), 400, "INVALID_REQUEST");
         assertThat(field(get("/" + id), "status")).isEqualTo("VENCIDO");
         assertThat(field(get("/" + id), "status")).isEqualTo("VENCIDO");
-        assertProblem(client.send(request("/" + id + "/payments").POST(HttpRequest.BodyPublishers.noBody()).build(),
-                HttpResponse.BodyHandlers.ofByteArray()), 409, "INVALID_STATE_TRANSITION");
+        assertProblem(
+                client.send(
+                        request("/" + id + "/payments").POST(HttpRequest.BodyPublishers.noBody()).build(),
+                        HttpResponse.BodyHandlers.ofByteArray()),
+                409,
+                "INVALID_STATE_TRANSITION");
         assertThat(eventCount(UUID.fromString(id))).isEqualTo(2);
     }
 
@@ -414,29 +472,48 @@ class BoletoPostgresTests extends PostgresIntegrationTest {
         String id = field(issued, "id");
         clock.time.set(Instant.parse("2026-01-05T00:00:00Z"));
 
-        assertProblem(client.send(request("/" + id + "/payments").POST(HttpRequest.BodyPublishers.noBody()).build(),
-                HttpResponse.BodyHandlers.ofByteArray()), 409, "INVALID_STATE_TRANSITION");
+        assertProblem(
+                client.send(
+                        request("/" + id + "/payments").POST(HttpRequest.BodyPublishers.noBody()).build(),
+                        HttpResponse.BodyHandlers.ofByteArray()),
+                409,
+                "INVALID_STATE_TRANSITION");
 
         UUID boletoId = UUID.fromString(id);
-        assertThat(jdbc.sql("select status from boleto where id = :id")
-                .param("id", boletoId).query(String.class).single()).isEqualTo("VENCIDO");
-        assertThat(jdbc.sql("select event_type from boleto_audit where boleto_id = :id order by aggregate_version")
-                .param("id", boletoId).query(String.class).list()).containsExactly("BOLETO_ISSUED", "BOLETO_EXPIRED");
-        assertThat(jdbc.sql("select event_type from boleto_outbox where aggregate_id = :id order by aggregate_version")
-                .param("id", boletoId).query(String.class).list()).containsExactly("BOLETO_ISSUED", "BOLETO_EXPIRED");
+        assertThat(
+                        jdbc.sql("select status from boleto where id = :id")
+                                .param("id", boletoId)
+                                .query(String.class)
+                                .single())
+                .isEqualTo("VENCIDO");
+        assertThat(
+                        jdbc.sql("select event_type from boleto_audit where boleto_id = :id order by aggregate_version")
+                                .param("id", boletoId)
+                                .query(String.class)
+                                .list())
+                .containsExactly("BOLETO_ISSUED", "BOLETO_EXPIRED");
+        assertThat(
+                        jdbc.sql(
+                                        "select event_type from boleto_outbox where aggregate_id = :id order by aggregate_version")
+                                .param("id", boletoId)
+                                .query(String.class)
+                                .list())
+                .containsExactly("BOLETO_ISSUED", "BOLETO_EXPIRED");
     }
 
     @Test
     void shouldCorrelateRequestWhenTheOtlpExporterFails(CapturedOutput output) throws Exception {
         String trace = "12345678901234567890123456789012";
         int previousFailures = identity.failedExports.get();
-        var reply = client.send(request("").header("traceparent", "00-" + trace + "-1234567890123456-01")
-                .GET().build(), HttpResponse.BodyHandlers.ofByteArray());
+        var reply =
+                client.send(
+                        request("").header("traceparent", "00-" + trace + "-1234567890123456-01").GET().build(),
+                        HttpResponse.BodyHandlers.ofByteArray());
         assertThat(reply.statusCode()).isEqualTo(200);
         assertThat(reply.headers().firstValue("X-Trace-Id")).contains(trace);
         assertThat(output.getOut()).contains(trace, "spanId", "Boleto request completed");
-        await().atMost(Duration.ofSeconds(12)).untilAsserted(() ->
-                assertThat(identity.failedExports.get()).isGreaterThan(previousFailures));
+        await().atMost(Duration.ofSeconds(12))
+                .untilAsserted(() -> assertThat(identity.failedExports.get()).isGreaterThan(previousFailures));
         assertThat(get("").statusCode()).isEqualTo(200);
     }
 
@@ -444,20 +521,27 @@ class BoletoPostgresTests extends PostgresIntegrationTest {
     @EnabledIfEnvironmentVariable(named = "BPL_IT_JAEGER_QUERY", matches = ".+")
     void shouldExportTracesToJaeger() throws Exception {
         String trace = UUID.randomUUID().toString().replace("-", "");
-        identity.forwardTracesTo = URI.create(System.getenv().getOrDefault(
-                "BPL_IT_JAEGER_OTLP", "http://127.0.0.1:4318/v1/traces"));
+        identity.forwardTracesTo =
+                URI.create(System.getenv().getOrDefault("BPL_IT_JAEGER_OTLP", "http://127.0.0.1:4318/v1/traces"));
         try {
-            var response = client.send(request("").header("traceparent", "00-" + trace + "-1234567890123456-01")
-                    .GET().build(), HttpResponse.BodyHandlers.ofByteArray());
+            var response =
+                    client.send(
+                            request("").header("traceparent", "00-" + trace + "-1234567890123456-01").GET().build(),
+                            HttpResponse.BodyHandlers.ofByteArray());
             assertThat(response.statusCode()).isEqualTo(200);
             assertThat(response.headers().firstValue("X-Trace-Id")).contains(trace);
-            var lookup = HttpRequest.newBuilder(URI.create(System.getenv("BPL_IT_JAEGER_QUERY")
-                    + "/api/traces/" + trace)).timeout(Duration.ofSeconds(3)).GET().build();
-            await().atMost(Duration.ofSeconds(20)).pollInterval(Duration.ofMillis(100)).untilAsserted(() -> {
-                var exported = client.send(lookup, HttpResponse.BodyHandlers.ofString());
-                assertThat(exported.statusCode()).isEqualTo(200);
-                assertThat(exported.body()).contains(trace);
-            });
+            var lookup =
+                    HttpRequest.newBuilder(URI.create(System.getenv("BPL_IT_JAEGER_QUERY") + "/api/traces/" + trace))
+                            .timeout(Duration.ofSeconds(3))
+                            .GET()
+                            .build();
+            await().atMost(Duration.ofSeconds(20))
+                    .pollInterval(Duration.ofMillis(100))
+                    .untilAsserted(() -> {
+                        var exported = client.send(lookup, HttpResponse.BodyHandlers.ofString());
+                        assertThat(exported.statusCode()).isEqualTo(200);
+                        assertThat(exported.body()).contains(trace);
+                    });
         } finally {
             identity.forwardTracesTo = null;
         }
@@ -472,7 +556,8 @@ class BoletoPostgresTests extends PostgresIntegrationTest {
         if (key != null) {
             request.header("Idempotency-Key", key);
         }
-        return client.send(request.POST(HttpRequest.BodyPublishers.ofString(body)).build(),
+        return client.send(
+                request.POST(HttpRequest.BodyPublishers.ofString(body)).build(),
                 HttpResponse.BodyHandlers.ofByteArray());
     }
 
@@ -499,18 +584,36 @@ class BoletoPostgresTests extends PostgresIntegrationTest {
 
     @TestConfiguration(proxyBeanMethods = false)
     static class TestBeans {
-        @Bean @Primary
-        MutableClock testClock() { return new MutableClock(); }
+        @Bean
+        @Primary
+        MutableClock testClock() {
+            return new MutableClock();
+        }
 
-        @Bean @Primary
-        ControlledRenderer testRenderer(PdfBoxRenderer renderer) { return new ControlledRenderer(renderer); }
+        @Bean
+        @Primary
+        ControlledRenderer testRenderer(PdfBoxRenderer renderer) {
+            return new ControlledRenderer(renderer);
+        }
     }
 
     static class MutableClock extends Clock {
         private final AtomicReference<Instant> time = new AtomicReference<>(ISSUE_TIME);
-        @Override public ZoneId getZone() { return ZoneId.of("America/Sao_Paulo"); }
-        @Override public Clock withZone(ZoneId zone) { return Clock.fixed(instant(), zone); }
-        @Override public Instant instant() { return time.get(); }
+
+        @Override
+        public ZoneId getZone() {
+            return ZoneId.of("America/Sao_Paulo");
+        }
+
+        @Override
+        public Clock withZone(ZoneId zone) {
+            return Clock.fixed(instant(), zone);
+        }
+
+        @Override
+        public Instant instant() {
+            return time.get();
+        }
     }
 
     static class ControlledRenderer implements PdfRenderer {
@@ -518,9 +621,12 @@ class BoletoPostgresTests extends PostgresIntegrationTest {
         private final AtomicInteger calls = new AtomicInteger();
         private volatile boolean fail;
 
-        ControlledRenderer(PdfBoxRenderer renderer) { this.renderer = renderer; }
+        ControlledRenderer(PdfBoxRenderer renderer) {
+            this.renderer = renderer;
+        }
 
-        @Override public byte[] render(Snapshot boleto) throws IOException {
+        @Override
+        public byte[] render(Snapshot boleto) throws IOException {
             calls.incrementAndGet();
             if (fail) {
                 throw new IOException("Synthetic rendering failure");

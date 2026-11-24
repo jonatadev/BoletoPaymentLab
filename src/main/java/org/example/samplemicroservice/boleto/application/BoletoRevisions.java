@@ -75,22 +75,33 @@ public class BoletoRevisions {
         Object[] row = (Object[]) rows.getFirst();
         Boleto boleto = (Boleto) row[0];
         Metadata metadata = metadata(row);
-        State state = metadata.operation() == RevisionType.DEL ? null : new State(
-                boleto.status(), boleto.amount(), boleto.dueDate(), boleto.issuedAt(), boleto.version(),
-                boleto.createdAt(), boleto.updatedAt(), boleto.createdBy(), boleto.updatedBy());
+        State state =
+                metadata.operation() == RevisionType.DEL
+                        ? null
+                        : new State(
+                                boleto.status(),
+                                boleto.amount(),
+                                boleto.dueDate(),
+                                boleto.issuedAt(),
+                                boleto.version(),
+                                boleto.createdAt(),
+                                boleto.updatedAt(),
+                                boleto.createdBy(),
+                                boleto.updatedBy());
         return new Detail(metadata, state);
     }
 
     private AuditQuery revisions(UUID id) {
-        return AuditReaderFactory.get(entities).createQuery()
+        return AuditReaderFactory.get(entities)
+                .createQuery()
                 .forRevisionsOfEntity(Boleto.class, false, true)
                 .add(AuditEntity.id().eq(id));
     }
 
     private static Metadata metadata(Object[] row) {
         BoletoRevision revision = (BoletoRevision) row[1];
-        return new Metadata(revision.id(), revision.timestamp(), revision.actor(), revision.correlationId(),
-                (RevisionType) row[2]);
+        return new Metadata(
+                revision.id(), revision.timestamp(), revision.actor(), revision.correlationId(), (RevisionType) row[2]);
     }
 
     private static void changed(List<String> fields, String field, Object original, Object updated) {
@@ -99,11 +110,19 @@ public class BoletoRevisions {
         }
     }
 
-    public record Metadata(long revision, Instant timestamp, String actor, String correlationId,
-            RevisionType operation) {}
+    public record Metadata(
+            long revision, Instant timestamp, String actor, String correlationId, RevisionType operation) {}
 
-    public record State(BoletoStatus status, BigDecimal amount, LocalDate dueDate, Instant issuedAt,
-            Long version, Instant createdAt, Instant updatedAt, String createdBy, String updatedBy) {}
+    public record State(
+            BoletoStatus status,
+            BigDecimal amount,
+            LocalDate dueDate,
+            Instant issuedAt,
+            Long version,
+            Instant createdAt,
+            Instant updatedAt,
+            String createdBy,
+            String updatedBy) {}
 
     public record Detail(Metadata metadata, State state) {}
 

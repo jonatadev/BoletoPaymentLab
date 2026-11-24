@@ -11,9 +11,8 @@ enum BoletoEventType {
     BOLETO_EXPIRED,
     BOLETO_CANCELED;
 
-    private static final Set<String> WIRE_VALUES = Arrays.stream(values())
-            .map(BoletoEventType::wireValue)
-            .collect(Collectors.toUnmodifiableSet());
+    private static final Set<String> WIRE_VALUES =
+            Arrays.stream(values()).map(BoletoEventType::wireValue).collect(Collectors.toUnmodifiableSet());
 
     static BoletoEventType fromStatus(BoletoStatus status) {
         return switch (status) {

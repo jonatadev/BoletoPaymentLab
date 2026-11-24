@@ -14,9 +14,10 @@ final class AnalyticsDateRanges {
 
     ResolvedDateRange optional(AnalyticsModels.DateRangeInput input) {
         LocalDate today = LocalDate.now(clock);
-        LocalDate start = input == null || input.startDate() == null
-                ? today.minusDays(properties.defaultPeriodDays() - 1L)
-                : input.startDate();
+        LocalDate start =
+                input == null || input.startDate() == null
+                        ? today.minusDays(properties.defaultPeriodDays() - 1L)
+                        : input.startDate();
         LocalDate end = input == null || input.endDate() == null ? today : input.endDate();
         return validate(start, end);
     }
@@ -38,6 +39,5 @@ final class AnalyticsDateRanges {
         return new ResolvedDateRange(start, end);
     }
 
-    record ResolvedDateRange(LocalDate startDate, LocalDate endDate) {
-    }
+    record ResolvedDateRange(LocalDate startDate, LocalDate endDate) {}
 }

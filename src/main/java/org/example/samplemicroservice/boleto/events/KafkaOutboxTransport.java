@@ -28,8 +28,12 @@ class KafkaOutboxTransport implements OutboxTransport {
     private final BoletoTelemetry telemetry;
     private final String topic;
 
-    KafkaOutboxTransport(KafkaTemplate<String, String> kafka, ObjectMapper json,
-            ObjectProvider<Tracer> tracer, ObjectProvider<Propagator> propagator, BoletoTelemetry telemetry,
+    KafkaOutboxTransport(
+            KafkaTemplate<String, String> kafka,
+            ObjectMapper json,
+            ObjectProvider<Tracer> tracer,
+            ObjectProvider<Propagator> propagator,
+            BoletoTelemetry telemetry,
             @Value("${bpl.events.topic}") String topic) {
         this.kafka = kafka;
         this.json = json;
@@ -51,8 +55,10 @@ class KafkaOutboxTransport implements OutboxTransport {
         var source = traceparent == null ? Map.<String, String>of() : Map.of("traceparent", traceparent);
         var span = contextPropagation.extract(source, Map::get).name("bpl.outbox.publish").start();
         try (var scope = activeTracer.withSpan(span)) {
-            contextPropagation.inject(span.context(), record, (message, key, value) ->
-                    message.headers().add(key, value.getBytes(StandardCharsets.US_ASCII)));
+            contextPropagation.inject(
+                    span.context(),
+                    record,
+                    (message, key, value) -> message.headers().add(key, value.getBytes(StandardCharsets.US_ASCII)));
             send(record);
         } catch (PublishFailure exception) {
             span.tag("outcome", "failure");
