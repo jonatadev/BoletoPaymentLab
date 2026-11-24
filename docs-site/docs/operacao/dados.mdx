@@ -15,6 +15,7 @@ dentro das transações Spring.
 | `boleto_audit` | Histórico imutável por versão do agregado, com origem e correlação. |
 | `boleto_outbox` | Evento pendente ou publicado, agenda de novas tentativas e contexto de trace. |
 | `processed_boleto_event` | Recibo persistente, único por `eventId`, do consumidor educacional. |
+| `boleto_revision` e `boleto_revision_state` | Metadados das revisões Envers e snapshots técnicos do boleto. |
 
 As tabelas de auditoria e Outbox compartilham o identificador do evento.
 Os índices dão suporte a listagem por emissão, filtro cliente/período,
@@ -24,8 +25,8 @@ transações limitam disputas em mudanças de estado.
 ## Migrações incrementais
 
 Flyway lê as migrações compartilhadas em `src/main/resources/db/migration`
-e seleciona o diretório do SGBD em `src/main/resources/db/vendor`. A V5
-fica em `db/vendor/postgresql`. O teste de inicialização em H2 usa V1–V4.
+e seleciona o diretório do SGBD em `src/main/resources/db/vendor`. As
+migrações V5, V7 e V8 são específicas de PostgreSQL. A V6 é compartilhada.
 Em configurações locais antigas, remova a sobrescrita de
 `spring.flyway.locations` que aponta só para o diretório compartilhado,
 ou inclua os dois locais.
@@ -45,6 +46,9 @@ ou inclua os dois locais.
 | V3 | Auditoria e Outbox transacional. |
 | V4 | Recibos do consumidor Kafka. |
 | V5 | Chave estrangeira composta entre Outbox e auditoria por evento, boleto e versão. |
+| V6 | Campos de auditoria da entidade e tabelas de revisão do Hibernate Envers. |
+| V7 | Criação do esquema `analytics` e das views de leitura. |
+| V8 | Agrupamento da view `analytics.boleto_status` por status e data de emissão. |
 
 A V5 cria um índice único na auditoria e verifica os registros existentes
 em uma transação. Use uma janela de manutenção. A espera por locks é limitada
@@ -60,6 +64,8 @@ eventos históricos indisponíveis. A suíte
 
 Preserve as migrações já aplicadas. Para mudanças de esquema, adicione uma
 nova versão. A retenção de auditoria, Outbox e recibos ainda é manual.
+Consulte o [ADR 007](../decisoes/envers.md) para as revisões e o
+[guia do MCP](./mcp-analytics.md) para a role com acesso às views.
 
 ## Inspeção somente leitura
 
@@ -88,6 +94,7 @@ erDiagram
   BOLETO ||--o{ BOLETO_AUDIT : "histórico"
   BOLETO ||--o{ BOLETO_OUTBOX : "eventos"
   BOLETO_AUDIT ||--o| BOLETO_OUTBOX : "identidade composta V5"
+  BOLETO_REVISION ||--o{ BOLETO_REVISION_STATE : "revisão técnica V6"
   BOLETO {
     uuid id PK
     decimal amount
@@ -112,6 +119,15 @@ erDiagram
   PROCESSED_BOLETO_EVENT {
     uuid event_id PK
     uuid aggregate_id
+  }
+  BOLETO_REVISION {
+    bigint id PK
+    bigint revised_at
+  }
+  BOLETO_REVISION_STATE {
+    uuid id PK
+    bigint rev PK, FK
+    smallint revtype
   }
 ```
 

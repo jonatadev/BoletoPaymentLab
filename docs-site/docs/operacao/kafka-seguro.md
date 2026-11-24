@@ -15,9 +15,19 @@ permissões e da criptografia na plataforma de armazenamento.
 
 ### Fluxo de autenticação e provisionamento
 
-O broker inicia com certificados de nó e administrador. O provisionador
-usa o listener privado ADMIN para registrar os clientes SCRAM e conferir as
-ACLs. A API e a UI usam a CA para confirmar a identidade do broker.
+O broker carrega o certificado de nó. O provisionador usa sua própria
+identidade mTLS no listener privado ADMIN para criar o tópico e as
+credenciais SCRAM ausentes e conferir as ACLs. Credenciais existentes
+são validadas. Uma divergência faz o provisionamento falhar. A API
+e a UI usam a CA para confirmar a identidade do broker.
+
+| Listener | Endereço | Autenticação |
+| --- | --- | --- |
+| `HOST` | `127.0.0.1:9092` por padrão | SCRAM-SHA-512 sobre TLS |
+| `INTERNAL` | `kafka:29092` na rede Kafka | SCRAM-SHA-512 sobre TLS |
+| `CONTROLLER` | `kafka:9093` na rede Kafka | mTLS |
+| `REPLICATION` | `kafka:29094` na rede Kafka | mTLS |
+| `ADMIN` | `kafka:29095` na rede Kafka | mTLS |
 
 ```mermaid
 flowchart LR
@@ -57,6 +67,7 @@ ele estiver fora do PATH.
 python infra/kafka/generate-local.py
 docker compose config --quiet
 docker compose up -d
+docker compose ps -a kafka kafka-provision
 docker compose --profile kafka-ui up -d
 ```
 
@@ -68,6 +79,12 @@ e travessia aos UIDs dos serviços com ACLs locais caso sejam diferentes do
 usuário gerador. O Apache Kafka usa UID 1000 e a API usa UID 10001. Preserve
 a chave da CA fora das montagens. No Windows, mantenha a ACL NTFS restrita
 ao usuário autorizado e ao sistema.
+
+A sonda do broker realiza mTLS em `REPLICATION` e exige uma resposta
+válida do protocolo Kafka. Depois que ela passa, `kafka-provision`
+confirma tópico, credenciais e ACLs. Confira o status `Exited (0)`
+desse serviço antes de iniciar a API no host. Em caso de falha,
+consulte `docker compose logs --tail 60 kafka kafka-provision`.
 
 Para rodar a API no host com os perfis `local,platform`, aponte
 `SPRING_CONFIG_IMPORT` para

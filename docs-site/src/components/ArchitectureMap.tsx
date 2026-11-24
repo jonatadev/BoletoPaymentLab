@@ -6,14 +6,19 @@ import '@xyflow/react/dist/style.css';
 
 const components = [
   {id: 'client', label: 'Cliente HTTP', kind: 'Cliente', x: 0, y: 160, path: '/inicio/executar', detail: 'Postman ou outro cliente local obtém um token e chama a API.'},
-  {id: 'oidc', label: 'Keycloak', kind: 'Identidade', x: 240, y: 0, path: '/operacao/seguranca', detail: 'Emite tokens e fornece as chaves públicas JWKS.'},
+  {id: 'oidc', label: 'Keycloak local', kind: 'Identidade', x: 240, y: 0, path: '/operacao/seguranca#emissor-e-jwks-no-keycloak', detail: 'Emite JWT com o issuer anunciado no host. Os serviços em contêiner podem buscar JWKS pelo endereço interno.'},
   {id: 'api', label: 'Spring MVC', kind: 'API', x: 240, y: 160, path: '/referencia/api', detail: 'Recebe requisições REST, valida escopos JWT e devolve respostas HTTP.'},
   {id: 'app', label: 'Casos de uso', kind: 'Domínio e aplicação', x: 500, y: 160, path: '/arquitetura/dominio', detail: 'Orquestram emissão, replay, consultas, transições e geração do documento.'},
   {id: 'pdf', label: 'PDFBox', kind: 'Documento', x: 770, y: 0, path: '/arquitetura/dominio#emissão-e-documento', detail: 'Renderiza o PDF educacional em memória, sob demanda.'},
   {id: 'db', label: 'PostgreSQL', kind: 'Banco', x: 770, y: 160, path: '/operacao/dados', detail: 'Armazena boletos, associações idempotentes, auditoria, outbox e recibos de deduplicação.'},
   {id: 'outbox', label: 'Relay e consumidor', kind: 'Mensageria', x: 500, y: 350, path: '/referencia/eventos', detail: 'O relay publica eventos pendentes. O consumidor registra recibos por ID do evento.'},
   {id: 'kafka', label: 'Kafka', kind: 'Mensageria', x: 770, y: 350, path: '/operacao/kafka-seguro', detail: 'Broker em KRaft com SCRAM-SHA-512 sobre TLS e ACLs literais. O plano de controle usa mTLS.'},
-  {id: 'jaeger', label: 'Jaeger', kind: 'Observabilidade', x: 1030, y: 55, path: '/operacao/observabilidade', detail: 'Recebe spans por OTLP/HTTP quando a exportação está habilitada.'},
+  {id: 'jaeger', label: 'Jaeger', kind: 'Observabilidade', x: 1030, y: 55, path: '/operacao/observabilidade', detail: 'Recebe traces por OTLP/HTTP na porta 4318 e permite consultá-los na porta 16686. O armazenamento local é em memória.'},
+  {id: 'kafbat', label: 'Kafbat UI', kind: 'Mensageria', x: 500, y: 470, path: '/operacao/kafka-seguro#instalação-local', detail: 'Interface opcional com login e acesso somente a metadados Kafka autorizados.'},
+  {id: 'provision', label: 'Provisionador Kafka', kind: 'Mensageria', x: 500, y: 245, path: '/operacao/kafka-seguro#fluxo-de-autenticação-e-provisionamento', detail: 'Lote que usa mTLS para criar recursos ausentes e validar credenciais e ACLs.'},
+  {id: 'mcp-client', label: 'Cliente MCP', kind: 'Cliente', x: 0, y: 635, path: '/operacao/mcp-analytics', detail: 'Envia chamadas Streamable HTTP autenticadas ao endpoint /mcp.'},
+  {id: 'mcp', label: 'MCP analítico', kind: 'Análise', x: 240, y: 635, path: '/operacao/mcp-analytics', detail: 'Processo separado. Valida JWT e analytics:read e consulta somente as views analíticas do PostgreSQL.'},
+  {id: 'mcp-oidc', label: 'Keycloak isolado', kind: 'Identidade', x: 500, y: 765, path: '/operacao/mcp-analytics#como-conectar-o-boleto-analytics-mcp-ao-chatgpt', detail: 'Serviço opcional do overlay ChatGPT. Publica o issuer HTTPS por meio do proxy OAuth restrito.'},
 ];
 
 const connections = [
@@ -24,15 +29,20 @@ const connections = [
   ['app', 'pdf', 'PDF em memória'],
   ['app', 'db', 'JPA / JDBC'],
   ['outbox', 'db', 'JDBC'],
-  ['outbox', 'kafka', 'SASL_SSL'],
+  ['outbox', 'kafka', 'SASL_SSL · publicação e consumo'],
+  ['provision', 'kafka', 'mTLS · ADMIN'],
+  ['kafbat', 'kafka', 'SASL_SSL · metadados'],
   ['api', 'jaeger', 'OTLP/HTTP'],
   ['outbox', 'jaeger', 'OTLP/HTTP'],
+  ['mcp-client', 'mcp', 'Streamable HTTP + JWT'],
+  ['mcp', 'db', 'JDBC · views analytics'],
+  ['mcp', 'mcp-oidc', 'JWKS HTTP · overlay ChatGPT'],
 ];
 
 const colors: Record<string, string> = {
   Cliente: '#64748b', Identidade: '#9333a8', API: '#2563eb',
   'Domínio e aplicação': '#148067', Documento: '#7c639e', Banco: '#bf7219',
-  Mensageria: '#b53c66', Observabilidade: '#32798c',
+  Mensageria: '#b53c66', Observabilidade: '#32798c', Análise: '#17817e',
 };
 
 const edges: Edge[] = connections.map(([source, target, label]) => ({

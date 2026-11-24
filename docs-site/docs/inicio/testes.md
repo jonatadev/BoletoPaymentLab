@@ -16,7 +16,7 @@ title: Testes e validação
 | `BoletoPaymentLabApplicationTests` | Inicialização do contexto Spring. |
 | `BoletoPostgresTests` | Rotas HTTP, JWT, idempotência, concorrência, auditoria, falha de PDF e disponibilidade durante erro OTLP. |
 | `BoletoEventsPostgresTests` | Retentativa, ordem de publicação, concorrência no Outbox e deduplicação. |
-| `LegacyDatabaseUpgradeTests` | Migração V1–V5 no PostgreSQL com um registro preexistente. |
+| `LegacyDatabaseUpgradeTests` | Migração da V1 à versão atual no PostgreSQL, preservando o UUID e a data de vencimento de um registro existente. |
 | `OutboxAuditMigrationTests` | Migração V4–V5 com eventos legados, rejeição de relações divergentes e rollback do DDL nos cenários S17–S19. |
 
 As suítes de PostgreSQL e Kafka usam Testcontainers e exigem um daemon

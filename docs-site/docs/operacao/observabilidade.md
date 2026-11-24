@@ -43,6 +43,24 @@ amostragem padrão local é `1.0` e pode ser alterada por
 `BPL_TRACE_SAMPLE`. **Traces podem ser descartados** quando o coletor está
 indisponível. Essa falha não precisa interromper a API.
 
+| Onde a API roda | Endpoint de ingestão OTLP/HTTP |
+| --- | --- |
+| Host | `http://127.0.0.1:4318/v1/traces` por padrão. |
+| Compose, perfil `app` | `http://jaeger:4318/v1/traces` na rede interna. |
+
+A porta `16686` serve a interface e a consulta. A porta `4318`
+recebe traces. O Jaeger do Compose mantém os traces em memória e
+reiniciar o contêiner descarta esse histórico. Para validar a consulta
+de um trace real, inicie o Jaeger e execute o teste de
+[S21](https://github.com/jonatadev/BoletoPaymentLab/blob/main/specs/usecases/UC-BPL-002-boleto-lifecycle.md):
+
+```powershell
+docker compose up -d jaeger
+$env:BPL_IT_JAEGER_QUERY = 'http://127.0.0.1:16686'
+$env:BPL_IT_JAEGER_OTLP = 'http://127.0.0.1:4318/v1/traces'
+.\gradlew.bat :integrationTest --tests '*BoletoPostgresTests.shouldExportTracesToJaeger'
+```
+
 ## Saúde e métricas
 
 | Endpoint | Exposição |
@@ -58,3 +76,5 @@ Exemplos incluem `http.server.requests`, `bpl.issuance`, `bpl.pdf.render`,
 `bpl.outbox.published`, `bpl.outbox.errors` e `bpl.events.duplicates`.
 Contadores de eventos aparecem depois de observarem a primeira ocorrência.
 O Actuator fornece as métricas locais. O envio OTLP para o Jaeger é de traces.
+O diagnóstico de TLS, SASL e ACL usa também os
+[medidores de segurança Kafka](./kafka-seguro.md#diagnóstico-e-recuperação).

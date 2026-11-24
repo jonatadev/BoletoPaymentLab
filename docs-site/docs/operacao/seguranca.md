@@ -41,6 +41,37 @@ grant_type=client_credentials&client_id=boleto-reader&client_secret=<segredo-loc
 O cliente envia o `access_token` como `Authorization: Bearer <token-local>`.
 Veja a tabela de escopos por rota em [API REST](../referencia/api.md).
 
+## Emissor e JWKS no Keycloak
+
+O emissor é o valor `iss` que o serviço deve aceitar no JWT. A URL
+JWKS é o endereço que o serviço usa para obter as chaves públicas. No
+Compose, o Keycloak anuncia o endereço acessível ao cliente no host. Os
+contêineres podem buscar as chaves pela rede interna.
+
+| Serviço | Emissor esperado | URL JWKS |
+| --- | --- | --- |
+| API no host | `http://127.0.0.1:8180/realms/boleto-lab` por padrão | Derivada do emissor ou definida em `BPL_OIDC_JWKS`. |
+| API em contêiner com tokens do host | Issuer anunciado pelo Keycloak, configurado em `BPL_OIDC_ISSUER`. | `http://keycloak:8080/realms/boleto-lab/protocol/openid-connect/certs` em `BPL_OIDC_JWKS`. |
+| MCP local no Compose | `http://127.0.0.1:8180/realms/boleto-lab`, com audiência `boleto-analytics-mcp`. | URL interna configurada em `MCP_AUTH_JWKS`. |
+| MCP no overlay ChatGPT | Emissor HTTPS publicado pelo Keycloak isolado. | URL interna do serviço `keycloak-chatgpt`. |
+
+O serviço da API no Compose base define o emissor interno. Para usar
+tokens emitidos em loopback no Postman, siga
+[Iniciar a API em contêiner](../inicio/executar.md#iniciar-a-api-em-contêiner).
+Se mudar a porta do Keycloak, consulte o issuer anunciado e ajuste
+também o ambiente do Postman.
+
+```powershell
+$issuer = 'http://127.0.0.1:8180/realms/boleto-lab'
+Invoke-RestMethod "$issuer/.well-known/openid-configuration" |
+  Select-Object issuer, jwks_uri
+```
+
+Veja o [guia do MCP](./mcp-analytics.md) para Authorization Code com
+PKCE e `analytics:read`, e o
+[cenário S20](https://github.com/jonatadev/BoletoPaymentLab/blob/main/specs/usecases/UC-BPL-002-boleto-lifecycle.md)
+para os critérios de autorização da API.
+
 ## Diagnosticar acesso
 
 - `401 UNAUTHORIZED` indica JWT ausente ou inválido. Verifique emissor,
