@@ -7,6 +7,10 @@ com o UUID do boleto como chave Kafka e uma **string JSON** serializada com
 Jackson como valor. O perfil `platform` habilita publicação e consumo.
 `BPL_EVENTS_ENABLED` permite sobrescrever essa opção. Mesmo com o envio
 desabilitado, a alteração de domínio registra o Outbox.
+O grupo `boleto-lab-educational` e o tópico são autorizados para
+`svc-boleto-api`. Em execução de plataforma, o provisionamento cria
+o tópico antes de iniciar os clientes. Veja o
+[guia de segurança Kafka](../operacao/kafka-seguro.md).
 
 ## Contrato vigente
 

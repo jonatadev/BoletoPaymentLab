@@ -103,6 +103,7 @@ Keycloak boot. Use a new local development credential. A Keycloak volume
 retains its realm and initial administration settings.
 
 ```powershell
+python infra/kafka/generate-local.py
 docker compose config --quiet
 docker compose up -d
 docker compose ps
@@ -114,14 +115,20 @@ and OTLP/HTTP on 4318.
 Kafka is a single-node KRaft development broker. Keycloak imports the
 `boleto-lab` realm from `infra/keycloak`. PostgreSQL, Kafka and Keycloak
 have separate named volumes. Jaeger stores traces in memory.
-Open `http://127.0.0.1:8085` to inspect Kafka topics and consumer groups.
-The UI uses `kafka:29092` on the Compose network; it does not expose Kafka
-credentials or modify the existing topics.
+Run `docker compose --profile kafka-ui up -d` to enable the optional
+authenticated metadata UI at `http://127.0.0.1:8085`. The generated login
+configuration is under `.kafka-secrets/local/ui/`.
+Kafka clients use SCRAM-SHA-512 over TLS. KRaft and provisioning use mTLS.
+See [Kafka operations](docs-site/docs/operacao/kafka-seguro.md) and
+[security acceptance scenarios](specs/kafka-security.md).
 To confirm the realm import, open
 `http://127.0.0.1:8180/realms/boleto-lab/.well-known/openid-configuration`.
 The first Keycloak startup can take several minutes on a cold Docker host.
 
 Use `--spring.profiles.active=local,platform` in IntelliJ for Kafka and OTLP.
+Set `SPRING_CONFIG_IMPORT=file:./.kafka-secrets/local/app/spring.yaml` for
+the generated Kafka credentials. Set `BPL_KAFKA_CA` if the CA lives
+outside the default local path.
 Override `BPL_OIDC_ISSUER`, `BPL_KAFKA_BOOTSTRAP` and `BPL_OTLP_ENDPOINT` if
 their host ports differ from the defaults. For local-only API work, the
 `local` profile keeps writing to the outbox and leaves delivery disabled.
@@ -235,16 +242,18 @@ this release.
 
 ## Run tests
 
-Run `./gradlew test` (or `gradlew.bat test` on Windows). To include the
-HTTP and PostgreSQL scenarios, set `BPL_IT_DB_URL`, `BPL_IT_DB_USERNAME`
-and `BPL_IT_DB_PASSWORD` for a disposable or local development database
-with schema creation permission. Each integration run uses a fresh
-`bpl_it_*` schema, leaving it for inspection. Set `BPL_IT_KAFKA_BOOTSTRAP`
-to exercise broker delivery as well. The integration suite uses a separate
-topic and consumer group for each run. Set `BPL_IT_JAEGER_QUERY` to the Jaeger
-base URL to verify trace export and lookup, and `BPL_IT_JAEGER_OTLP` if the
-collector uses a non-default port. Without the integration URL,
-the PostgreSQL tests are skipped and the unit and foundation tests still run.
+Run `./gradlew test` (or `gradlew.bat test` on Windows). Run
+`./gradlew integrationTest` with Docker to exercise PostgreSQL and Kafka.
+The integration suite creates isolated databases and uses an isolated
+Kafka container by default. Set `BPL_IT_JAEGER_QUERY` to verify trace lookup
+and `BPL_IT_JAEGER_OTLP` if the collector uses a non-default port.
+
+Run `python infra/kafka/verify-local.py --mode migration` to exercise Kafka
+security and a populated-volume migration in an isolated Compose project.
+Use `--mode fresh --port 19093` for a new volume. To run
+`BoletoEventsPostgresTests` against the isolated secure Kafka, set
+`BPL_IT_SECURE_KAFKA_BOOTSTRAP`, `SPRING_CONFIG_IMPORT` and `BPL_KAFKA_CA`
+to its published endpoint and generated application files.
 
 ## Scan for secrets
 

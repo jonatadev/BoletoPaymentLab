@@ -28,9 +28,10 @@ manager aprovado pela plataforma.
 
 ## Limites para produção
 
-O Compose atual é exclusivamente local: Kafka usa PLAINTEXT e Keycloak usa
-`start-dev`. Um ambiente de produção requer TLS, mensageria autenticada e
-criptografada, imagens aprovadas e uma conta PostgreSQL de menor privilégio.
+O Compose é para uso local. O [Kafka](./kafka-seguro.md) usa TLS e
+autenticação, e o Keycloak usa `start-dev`. Uma implantação de produção
+requer CA e cofre aprovados, imagens aprovadas e uma conta PostgreSQL de
+menor privilégio.
 
 Os escopos JWT são válidos para todo o laboratório e não implementam
 isolamento de locatários ou propriedade de boleto. Essa decisão permanece

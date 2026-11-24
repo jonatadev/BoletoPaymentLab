@@ -11,10 +11,13 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import org.apache.kafka.clients.admin.Admin;
+import org.apache.kafka.clients.admin.NewTopic;
 import org.example.samplemicroservice.boleto.PostgresIntegrationTest;
 import org.example.samplemicroservice.boleto.application.BoletoLifecycle;
 import org.example.samplemicroservice.boleto.application.BoletoService;
@@ -41,12 +44,21 @@ import tools.jackson.databind.ObjectMapper;
 class BoletoEventsPostgresTests extends PostgresIntegrationTest {
     private static final String RUN = UUID.randomUUID().toString().replace("-", "");
     private static final String SCHEMA = "bpl_it_" + RUN;
+    private static final String SECURE_KAFKA = System.getenv("BPL_IT_SECURE_KAFKA_BOOTSTRAP");
+    private static final String TOPIC = SECURE_KAFKA == null ? "boleto-it-" + RUN : "boleto.lifecycle.v1";
     private static final KafkaContainer KAFKA =
-            new KafkaContainer(DockerImageName.parse("apache/kafka:3.9.1"));
+            SECURE_KAFKA == null ? new KafkaContainer(DockerImageName.parse("apache/kafka:4.2.2")) : null;
 
     static {
-        KAFKA.start();
-        Runtime.getRuntime().addShutdownHook(new Thread(KAFKA::stop, "kafka-integration-test-stop"));
+        if (KAFKA != null) {
+            KAFKA.start();
+            Runtime.getRuntime().addShutdownHook(new Thread(KAFKA::stop, "kafka-integration-test-stop"));
+            try (Admin admin = Admin.create(Map.of("bootstrap.servers", KAFKA.getBootstrapServers()))) {
+                admin.createTopics(List.of(new NewTopic(TOPIC, 3, (short) 1))).all().get(30, TimeUnit.SECONDS);
+            } catch (Exception exception) {
+                throw new ExceptionInInitializerError(exception);
+            }
+        }
     }
 
     @Autowired private BoletoService service;
@@ -69,9 +81,14 @@ class BoletoEventsPostgresTests extends PostgresIntegrationTest {
         properties.add("spring.jpa.properties.hibernate.default_schema", () -> SCHEMA);
         properties.add("bpl.events.enabled", () -> true);
         properties.add("bpl.events.poll-delay", () -> "1h");
-        properties.add("bpl.events.topic", () -> "boleto-it-" + RUN);
-        properties.add("spring.kafka.consumer.group-id", () -> "boleto-it-" + RUN);
-        properties.add("spring.kafka.bootstrap-servers", KAFKA::getBootstrapServers);
+        properties.add("bpl.events.topic", () -> TOPIC);
+        properties.add("spring.kafka.consumer.group-id",
+                () -> SECURE_KAFKA == null ? "boleto-it-" + RUN : "boleto-lab-educational");
+        properties.add("spring.kafka.bootstrap-servers",
+                () -> SECURE_KAFKA == null ? KAFKA.getBootstrapServers() : SECURE_KAFKA);
+        if (SECURE_KAFKA == null) {
+            properties.add("spring.kafka.properties[security.protocol]", () -> "PLAINTEXT");
+        }
     }
 
     @Test
@@ -86,17 +103,19 @@ class BoletoEventsPostgresTests extends PostgresIntegrationTest {
                 .query(Integer.class).single()).isEqualTo(1);
         jdbc.sql("update boleto_outbox set next_attempt_at = :due")
                 .param("due", clock.instant().minusSeconds(1).atOffset(ZoneOffset.UTC)).update();
-        assertThat(relay.processOne()).isTrue();
-        assertThat(relay.processOne()).isTrue();
+        await().atMost(Duration.ofSeconds(45)).until(relay::processOne);
+        await().atMost(Duration.ofSeconds(45)).until(relay::processOne);
         assertThat(transport.sent).extracting(BoletoEvent::eventType).containsExactly("BOLETO_ISSUED", "BOLETO_PAID");
         assertThat(jdbc.sql("select count(*) from boleto_outbox where published_at is not null")
                 .query(Integer.class).single()).isEqualTo(2);
         var event = transport.sent.getFirst();
         await().atMost(Duration.ofSeconds(20)).untilAsserted(() ->
                 assertThat(receipts(event.eventId())).isEqualTo(1));
+        var duplicates = meters.counter("bpl.events.duplicates");
+        double duplicatesBeforeReplay = duplicates.count();
         transport.delegate.publish(event, null);
         await().atMost(Duration.ofSeconds(20)).untilAsserted(() ->
-                assertThat(meters.counter("bpl.events.duplicates").count()).isEqualTo(1));
+                assertThat(duplicates.count()).isGreaterThan(duplicatesBeforeReplay));
         assertThat(receipts(event.eventId())).isEqualTo(1);
         assertThat(meters.counter("bpl.events.duplicates").count()).isEqualTo(1);
 

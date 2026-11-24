@@ -24,7 +24,7 @@ const sidebars: SidebarsConfig = {
     {
       type: 'category',
       label: 'Operação',
-      items: ['operacao/docker', 'operacao/dados', 'operacao/seguranca', 'operacao/configuracao-segura', 'operacao/observabilidade', 'operacao/mcp-analytics'],
+      items: ['operacao/docker', 'operacao/dados', 'operacao/seguranca', 'operacao/configuracao-segura', 'operacao/kafka-seguro', 'operacao/observabilidade', 'operacao/mcp-analytics'],
     },
     {
       type: 'category',
@@ -38,6 +38,7 @@ const sidebars: SidebarsConfig = {
         'decisoes/jwt',
         'decisoes/avro',
         'decisoes/fronteiras-de-aplicacao',
+        'decisoes/kafka',
       ],
     },
     'roadmap',

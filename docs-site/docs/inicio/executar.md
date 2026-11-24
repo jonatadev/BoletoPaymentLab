@@ -6,6 +6,7 @@ title: Executar o laboratório
 
 Use JDK 25, Docker com Compose e o Gradle Wrapper do repositório. O portal
 usa Node.js 22 ou superior e pode rodar separadamente do backend.
+Para gerar os certificados locais do Kafka, use Python 3 e OpenSSL.
 
 ## Subir a infraestrutura
 
@@ -16,6 +17,7 @@ definidas no próprio `.env` antes da primeira inicialização.
 
 ```powershell
 if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+python infra/kafka/generate-local.py
 docker compose config --quiet
 docker compose up -d
 docker compose ps
@@ -36,8 +38,11 @@ variáveis e verificações. Se precisar apenas do banco, execute
    `.env.example` começa com `5433`.
 4. Execute `BoletoPaymentLabApplication` com
    `--spring.profiles.active=local,platform`. O perfil `platform` habilita
-   publicação Kafka e exportação de traces. O perfil `local` sozinho
-   mantém os eventos no Outbox por padrão.
+   publicação Kafka e exportação de traces. Configure
+   `SPRING_CONFIG_IMPORT=file:./.kafka-secrets/local/app/spring.yaml` para
+   autenticar no Kafka. O perfil `local` sozinho mantém os eventos no Outbox
+   por padrão. Consulte [Segurança do Kafka](../operacao/kafka-seguro.md)
+   caso precise ajustar a CA ou o endereço do broker.
 5. Confirme `GET /actuator/health/readiness` no endereço da API
    `http://127.0.0.1:8080`. A prontidão inclui a conexão com o banco.
 

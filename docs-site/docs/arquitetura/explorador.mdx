@@ -22,7 +22,8 @@ Kafka e Jaeger quando o perfil de plataforma está ativo.
   Veja [Auditoria e Histórico de Entidades](./auditoria.md). O PDF é gerado
   em memória a partir de uma consulta.
 - **Mensageria.** O relay lê o Outbox e publica no Kafka. O consumidor
-  recebe do Kafka e registra o evento processado no PostgreSQL.
+  recebe do Kafka e registra o evento processado no PostgreSQL. Ambos usam
+  [SCRAM-SHA-512 sobre TLS](../operacao/kafka-seguro.md).
 - **Observabilidade.** A instrumentação exporta spans ao Jaeger por
   OTLP/HTTP quando a exportação está habilitada.
 

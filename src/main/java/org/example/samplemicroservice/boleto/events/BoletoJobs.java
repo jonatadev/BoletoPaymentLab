@@ -1,14 +1,14 @@
 package org.example.samplemicroservice.boleto.events;
 
-import org.apache.kafka.clients.admin.NewTopic;
 import org.example.samplemicroservice.boleto.application.BoletoLifecycle;
+import org.example.samplemicroservice.boleto.application.BoletoTelemetry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.kafka.config.TopicBuilder;
+import org.springframework.context.event.EventListener;
+import org.springframework.kafka.event.ConsumerStoppedEvent;
 import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -20,16 +20,25 @@ class BoletoJobs {
     private static final Logger LOGGER = LoggerFactory.getLogger(BoletoJobs.class);
     private final BoletoLifecycle lifecycle;
     private final OutboxRelay outbox;
+    private final BoletoTelemetry telemetry;
     private final boolean expiryEnabled;
     private final boolean eventsEnabled;
 
-    BoletoJobs(BoletoLifecycle lifecycle, OutboxRelay outbox,
+    BoletoJobs(BoletoLifecycle lifecycle, OutboxRelay outbox, BoletoTelemetry telemetry,
             @Value("${bpl.expiry.enabled}") boolean expiryEnabled,
             @Value("${bpl.events.enabled}") boolean eventsEnabled) {
         this.lifecycle = lifecycle;
         this.outbox = outbox;
+        this.telemetry = telemetry;
         this.expiryEnabled = expiryEnabled;
         this.eventsEnabled = eventsEnabled;
+    }
+
+    @EventListener
+    void consumerStopped(ConsumerStoppedEvent event) {
+        if (event.getReason() == ConsumerStoppedEvent.Reason.AUTH) {
+            telemetry.count("kafka.consumer.security.stops");
+        }
     }
 
     @Scheduled(fixedDelayString = "${bpl.expiry.delay}", initialDelayString = "${bpl.expiry.delay}", scheduler = "taskScheduler")
@@ -57,12 +66,6 @@ class BoletoJobs {
                 LOGGER.warn("Outbox polling deferred");
             }
         }
-    }
-
-    @Bean
-    @ConditionalOnProperty(name = "bpl.events.enabled", havingValue = "true")
-    NewTopic boletoEvents(@Value("${bpl.events.topic}") String topic) {
-        return TopicBuilder.name(topic).partitions(3).replicas(1).build();
     }
 
     @Bean
