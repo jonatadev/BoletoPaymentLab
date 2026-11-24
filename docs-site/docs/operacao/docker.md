@@ -34,6 +34,50 @@ aos metadados do tópico e grupo autorizados. Veja o
 [guia de segurança do Kafka](./kafka-seguro.md) para geração de credenciais,
 provisionamento e operação.
 
+## Implantação por rede e perfil
+
+```mermaid
+flowchart LR
+  accTitle: Implantação do Compose local
+  accDescr: A API em contêiner participa das redes padrão e Kafka. O MCP usa a rede padrão. O provisionador e a UI se conectam somente à rede Kafka.
+  Host["API no host<br/>Alternativa ao perfil app"]
+  App["API em contêiner<br/>Perfil app · ambas as redes"]
+  subgraph Default["Rede padrão"]
+    DB[("PostgreSQL · 5432")]
+    IdP["Keycloak · 8080"]
+    Trace["Jaeger · OTLP 4318"]
+    MCP["MCP analítico · 8090<br/>Perfil mcp"]
+  end
+  subgraph KafkaNet["Rede kafka"]
+    Kafka["Kafka em KRaft"]
+    Provision["Provisionador · execução única"]
+    UI["Kafbat UI<br/>Perfil kafka-ui"]
+  end
+  App -->|"JDBC"| DB
+  App -->|"JWKS"| IdP
+  App -.->|"OTLP/HTTP"| Trace
+  MCP -->|"JDBC de leitura"| DB
+  MCP -->|"JWKS"| IdP
+  Host -->|"HOST"| Kafka
+  App -->|"INTERNAL"| Kafka
+  Provision -->|"ADMIN"| Kafka
+  UI -->|"INTERNAL"| Kafka
+```
+
+As ligações mostram comunicação. A relação de inicialização no
+`compose.yaml` exige broker saudável para executar o provisionador. A API
+em contêiner e o Kafbat UI aguardam a conclusão do provisionador. A tabela
+acima registra as portas publicadas em loopback, incluindo as conexões
+da API no host ao PostgreSQL, Keycloak e Jaeger.
+
+Os listeners Kafka `HOST` (9092 por padrão) e `INTERNAL` (29092) usam
+SASL_SSL. O provisionador usa mTLS no listener `ADMIN` (29095).
+Consulte a [matriz de listeners](./kafka-seguro.md) para os detalhes.
+
+O overlay `compose.chatgpt.yaml` configura o MCP com outro Keycloak e um
+proxy OAuth. As rotas do cliente externo e as opções de túnel estão no
+[diagrama do MCP](./mcp-analytics.md#como-conectar-o-boleto-analytics-mcp-ao-chatgpt).
+
 ## Configuração local
 
 Mantenha as variáveis `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`
