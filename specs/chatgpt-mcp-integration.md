@@ -26,6 +26,24 @@ No boleto, audit, Outbox, Flyway or public REST contract changes.
 
 ## Proposed architecture
 
+For Secure MCP Tunnel discovery, the ChatGPT overlay can advertise the exact
+local origin `http://127.0.0.1:8090` while publishing the HTTPS Keycloak issuer.
+Only the explicit tunnel discovery mode permits that HTTP identifier. Both
+protected-resource metadata paths must agree, and the anonymous MCP challenge
+must point to the root metadata document. JWT signature, issuer, expiry,
+`boleto-analytics-mcp` audience and `analytics:read` checks remain mandatory.
+The connector-facing resource and any additional audience remain PENDENTE
+until verified through the tunnel.
+
+The optional ngrok transport reuses the isolated Keycloak and the OAuth
+route allowlist in Nginx. `compose.chatgpt.ngrok.yaml` binds only that proxy
+to loopback on port 18082 by default. Set `KEYCLOAK_PUBLIC_HOSTNAME` to the
+assigned development hostname, for example `auth-boleto.example.test`.
+The standard Keycloak and REST issuer stay on the local configuration.
+The operator activates ngrok separately after validating the discovery
+document and blocked routes locally. `CHATGPT_MCP_RESOURCE` remains PENDENTE
+until confirmed from the protected-resource metadata seen by the client.
+
 Add an opt-in Compose overlay with a separate Keycloak 26 instance and
 separate volume, initialized with the existing realm definition. Provision
 only the ChatGPT client in that instance and use a non-admin test account
@@ -43,8 +61,8 @@ endpoint and does not carry browser traffic to Keycloak.
 The isolated Keycloak advertises the exact public realm issuer. The opt-in
 MCP instance validates that issuer and RS256 signatures through the isolated
 Keycloak's internal JWKS endpoint. Preserve expiration, scope and audience
-checks. Publish protected-resource metadata for the actual tunnel resource
-identifier and advertise it on the 401 challenge. Confirm the resource and
+checks. Publish local protected-resource metadata and advertise its URL on
+the 401 challenge. Confirm the rewritten resource and
 audience binding against actual ChatGPT configuration before end-to-end use.
 
 Authorization uses a public client with Authorization Code and S256 PKCE.
@@ -69,9 +87,8 @@ isolated runtime when feasible. A tunnel status alone is not acceptance.
 
 ## Operation and open decisions
 
-Activation requires a manually approved hostname, named tunnel, DNS route,
-and protected-resource identifier from the actual ChatGPT connection.
-PENDENTE: confirm those values, the accepted audience/resource mapping and
+Discovery requires an approved HTTPS hostname and a running tunnel.
+PENDENTE: confirm the external resource, the accepted audience/resource mapping and
 that the connection accepts pre-registered public client authentication.
 Use `KEYCLOAK_PUBLIC_HOSTNAME` only in the optional overlay. Obtain the
 external resource from the metadata observed through the actual

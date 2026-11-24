@@ -1,0 +1,4 @@
+services:
+  chatgpt-oauth-proxy:
+    ports:
+      - "127.0.0.1:${CHATGPT_NGROK_PROXY_PORT:-18082}:8080"

@@ -25,12 +25,16 @@ import org.springframework.web.client.RestTemplate;
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties(AnalyticsSecurity.OAuthSettings.class)
 class AnalyticsSecurity {
+    private static final URI TUNNEL_LOCAL_RESOURCE = URI.create("http://127.0.0.1:8090");
+
     @Bean
     SecurityFilterChain analyticsSecurityFilterChain(HttpSecurity http,
             OAuthSettings oauth, AnalyticsProperties analytics) throws Exception {
         var entryPoint = new BearerTokenAuthenticationEntryPoint();
         if (oauth.enabled()) {
-            requireHttps(oauth.resource());
+            if (!oauth.tunnelDiscovery() || !TUNNEL_LOCAL_RESOURCE.equals(oauth.resource())) {
+                requireHttps(oauth.resource());
+            }
             requireHttps(URI.create(analytics.authIssuer()));
             entryPoint.setResourceMetadataParameterResolver(request ->
                     oauth.resource().resolve("/.well-known/oauth-protected-resource").toASCIIString());
@@ -68,7 +72,7 @@ class AnalyticsSecurity {
     }
 
     @ConfigurationProperties("mcp.oauth")
-    record OAuthSettings(boolean enabled, URI resource) {
+    record OAuthSettings(boolean enabled, URI resource, boolean tunnelDiscovery) {
     }
 
     @Bean

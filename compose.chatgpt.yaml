@@ -3,7 +3,9 @@ services:
     environment:
       MCP_AUTH_ISSUER: https://${KEYCLOAK_PUBLIC_HOSTNAME:?Set KEYCLOAK_PUBLIC_HOSTNAME}/realms/boleto-lab
       MCP_AUTH_JWKS: http://keycloak-chatgpt:8080/realms/boleto-lab/protocol/openid-connect/certs
-      MCP_OAUTH_RESOURCE: ${CHATGPT_MCP_RESOURCE:?Set CHATGPT_MCP_RESOURCE to the actual HTTPS resource}
+      # OpenAI Secure MCP Tunnel rewrites the loopback identifier for the connector.
+      MCP_OAUTH_RESOURCE: ${CHATGPT_MCP_RESOURCE:-http://127.0.0.1:8090}
+      MCP_OAUTH_TUNNEL_DISCOVERY: "true"
       MCP_OAUTH_ENABLED: "true"
     depends_on:
       keycloak-chatgpt:

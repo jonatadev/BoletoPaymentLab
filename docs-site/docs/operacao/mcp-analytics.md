@@ -105,8 +105,8 @@ administrativos no realm `boleto-lab`.
 1. Suba a infraestrutura local pelo procedimento acima e confirme que
    PostgreSQL e a role leitora do MCP estão prontos.
 2. Configure `KEYCLOAK_PUBLIC_HOSTNAME` com o hostname aprovado, sem esquema nem
-   caminho. Use em `CHATGPT_MCP_RESOURCE` o identificador HTTPS exato da
-   conexão no ChatGPT. Configure `CHATGPT_KC_ADMIN_USERNAME` e
+   caminho. Deixe `CHATGPT_MCP_RESOURCE` vazio para a descoberta inicial
+   pelo Secure MCP Tunnel. Configure `CHATGPT_KC_ADMIN_USERNAME` e
    `CHATGPT_KC_ADMIN_PASSWORD` apenas no ambiente local ignorado.
 3. Recrie apenas o MCP com o overlay e provisione o callback do ChatGPT
    no Keycloak separado:
@@ -157,14 +157,67 @@ Em um `401`, verifique assinatura, expiração, issuer e audiência
 audiência fixa precisa ser comprovada na conexão real. O provisionamento
 local não confirma o suporte desse modo de cliente no ChatGPT.
 
+### Preparar o Keycloak isolado para ngrok
+
+O override `compose.chatgpt.ngrok.yaml` publica somente o proxy Nginx
+em `127.0.0.1:18082`. Configure o domínio de desenvolvimento
+`auth-boleto.example.test` em `KEYCLOAK_PUBLIC_HOSTNAME`,
+conforme o comando abaixo. O Keycloak padrão em `8180` continua
+separado. O issuer previsto é
+`https://auth-boleto.example.test/realms/boleto-lab`.
+
+Defina as credenciais do Keycloak isolado no `.env` ignorado. Em PowerShell,
+suba apenas o proxy e seu Keycloak para validar localmente. Com o overlay
+ChatGPT, `CHATGPT_MCP_RESOURCE` vazio seleciona o recurso local
+`http://127.0.0.1:8090` para descoberta pelo túnel.
+
+```powershell
+$env:KEYCLOAK_PUBLIC_HOSTNAME = 'auth-boleto.example.test'
+$compose = @('-f', 'compose.yaml', '-f', 'compose.chatgpt.yaml', '-f', 'compose.chatgpt.ngrok.yaml', '--profile', 'mcp')
+docker compose @compose config --quiet
+docker compose @compose up -d chatgpt-oauth-proxy
+$origin = 'http://127.0.0.1:18082'
+$hostHeader = "Host: $env:KEYCLOAK_PUBLIC_HOSTNAME"
+$realm = '/realms/boleto-lab'
+$issuer = "https://$env:KEYCLOAK_PUBLIC_HOSTNAME$realm"
+$oidc = curl.exe -fsS -H $hostHeader "$origin$realm/.well-known/openid-configuration" | ConvertFrom-Json
+if ($oidc.issuer -cne $issuer) { throw 'Issuer divergente' }
+if ($oidc.code_challenge_methods_supported -notcontains 'S256') { throw 'PKCE S256 ausente' }
+foreach ($field in @('authorization_endpoint','token_endpoint','jwks_uri')) {
+    if (!([string]$oidc.$field).StartsWith("$issuer/", [StringComparison]::Ordinal)) { throw "URL divergente: $field" }
+}
+$oauth = curl.exe -fsS -H $hostHeader "$origin/.well-known/oauth-authorization-server$realm" | ConvertFrom-Json
+if ($oauth.issuer -cne $issuer -or $oauth.token_endpoint -cne $oidc.token_endpoint) { throw 'Descoberta OAuth divergente' }
+$jwks = curl.exe -fsS -H $hostHeader "$origin$realm/protocol/openid-connect/certs" | ConvertFrom-Json
+if (!$jwks.keys) { throw 'JWKS sem chaves' }
+foreach ($path in @('/admin/', '/admin/master/console/', '/realms/master/.well-known/openid-configuration', '/metrics')) {
+    $code = curl.exe -sS -o NUL -w '%{http_code}' -H $hostHeader "$origin$path"
+    if ($code -ne '404') { throw "Rota não bloqueada: $path ($code)" }
+}
+```
+
+Aguarde o Keycloak inicializar antes de consultar os endpoints. Os comandos
+acima não precisam do ngrok. Após autorização explícita, inicie o agente
+apontando para o **proxy**, sem o perfil Cloudflare:
+
+```powershell
+ngrok http http://127.0.0.1:18082 --url https://auth-boleto.example.test
+```
+
+Configure o authtoken no agente local e mantenha-o fora do repositório.
+Repita as consultas de descoberta e os testes de bloqueio usando a
+origem HTTPS pública. Só então teste o login com a conta OAuth de
+desenvolvimento. O transporte do MCP continua pelo Secure MCP Tunnel.
+Para reverter, encerre o agente ngrok e rode
+`docker compose @compose stop chatgpt-oauth-proxy keycloak-chatgpt`.
+
 ### Identificador do recurso e verificação antes da ativação
 
-No MCP local em execução, a consulta retornou HTTP 200 com
-`resource: http://127.0.0.1:8090` e sem `authorization_servers`.
-O documento com sufixo `/mcp` retornou
-`resource: http://127.0.0.1:8090/mcp`, também sem
-`authorization_servers`. Essa última URL é a origem local de transporte.
-Nenhum dos dois documentos confirma o identificador externo.
+Com o overlay ChatGPT e o recurso padrão, os dois documentos devem retornar
+`resource: http://127.0.0.1:8090`, o issuer HTTPS em `authorization_servers`
+e o escopo `analytics:read`. O `401` de `/mcp` deve apontar para o documento
+raiz em `WWW-Authenticate`. O Secure MCP Tunnel reescreve os endereços
+para o conector. Confirme o valor externo pelo fluxo real.
 
 ```powershell
 curl.exe --noproxy "*" http://127.0.0.1:8090/.well-known/oauth-protected-resource
@@ -198,8 +251,8 @@ enviados pelo cliente para `aud`.
 
 - [ ] Confirmar domínio sob controle do operador. O hostname
   `auth-boleto.seudominio.com` e o nome `boleto-keycloak-dev` são exemplos.
-- [ ] Confirmar o identificador externo e preencher
-  `KEYCLOAK_PUBLIC_HOSTNAME` e `CHATGPT_MCP_RESOURCE` no ambiente local.
+- [ ] Preencher `KEYCLOAK_PUBLIC_HOSTNAME`, testar a descoberta pelo túnel
+  e confirmar o identificador externo antes de revisar a audiência.
 - [ ] Após aprovação, criar o túnel e a rota DNS apontando para o proxy
   do Keycloak isolado. A origem padrão `127.0.0.1:8180` permanece para
   Postman. A rota externa usa `http://chatgpt-oauth-proxy:8080`.

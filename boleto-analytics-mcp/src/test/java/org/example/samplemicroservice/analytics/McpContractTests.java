@@ -38,7 +38,7 @@ import org.springframework.test.web.servlet.MockMvc;
 class McpContractTests {
     private static final String ISSUER = "https://issuer.example.test";
     private static final String AUDIENCE = "boleto-analytics-mcp";
-    private static final String RESOURCE = "https://resource.example.test/mcp";
+    private static final String RESOURCE = "http://127.0.0.1:8090";
     private static final RSAKey KEY = key();
     private static final HttpServer JWKS = jwks();
     private static final String INITIALIZE = """
@@ -60,6 +60,7 @@ class McpContractTests {
         registry.add("mcp.analytics.auth-audience", () -> AUDIENCE);
         registry.add("mcp.oauth.enabled", () -> true);
         registry.add("mcp.oauth.resource", () -> RESOURCE);
+        registry.add("mcp.oauth.tunnel-discovery", () -> true);
     }
 
     @Test
@@ -67,8 +68,13 @@ class McpContractTests {
         mvc.perform(post("/mcp").contentType("application/json").content(INITIALIZE))
                 .andExpect(status().isUnauthorized())
                 .andExpect(header().string("WWW-Authenticate",
-                        org.hamcrest.Matchers.containsString("https://resource.example.test/.well-known/oauth-protected-resource")));
-        mvc.perform(get("/.well-known/oauth-protected-resource/mcp"))
+                        org.hamcrest.Matchers.containsString(RESOURCE + "/.well-known/oauth-protected-resource")));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"/.well-known/oauth-protected-resource", "/.well-known/oauth-protected-resource/mcp"})
+    void shouldPublishTheSameTunnelDiscoveryMetadata(String path) throws Exception {
+        mvc.perform(get(path))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.resource").value(RESOURCE))
                 .andExpect(jsonPath("$.authorization_servers[0]").value(ISSUER))
                 .andExpect(jsonPath("$.scopes_supported[0]").value("analytics:read"));

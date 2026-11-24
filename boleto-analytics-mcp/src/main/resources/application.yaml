@@ -55,6 +55,8 @@ management:
       access: read-only
 
 mcp:
+  oauth:
+    tunnel-discovery: ${MCP_OAUTH_TUNNEL_DISCOVERY:false}
   analytics:
     auth-audience: ${MCP_AUTH_AUDIENCE}
     auth-issuer: ${MCP_AUTH_ISSUER}
