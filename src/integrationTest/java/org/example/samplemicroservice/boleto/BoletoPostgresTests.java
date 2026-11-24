@@ -387,6 +387,25 @@ class BoletoPostgresTests extends PostgresIntegrationTest {
         assertThat(get("").statusCode()).isEqualTo(200);
     }
 
+    @Test
+    void shouldRejectBoletoIssuanceWithoutHeaderCredentials() throws Exception {
+        String customer = "csrf-synthetic";
+        var response =
+                client.send(
+                        raw("").header("Origin", "https://other.example.test")
+                                .header("Cookie", "access_token=" + allPermissions)
+                                .header("Content-Type", "application/json")
+                                .header("Idempotency-Key", key())
+                                .POST(HttpRequest.BodyPublishers.ofString(body(customer, "10", DUE_DATE)))
+                                .build(),
+                        HttpResponse.BodyHandlers.ofByteArray());
+
+        assertProblem(response, 401, "UNAUTHORIZED");
+        assertThat(response.headers().firstValue("WWW-Authenticate")).contains("Bearer");
+        assertThat(response.headers().allValues("Set-Cookie")).noneMatch(cookie -> cookie.startsWith("JSESSIONID="));
+        assertThat(countFor(customer)).isZero();
+    }
+
     private HttpResponse<byte[]> authenticatedGet(String token) throws Exception {
         var builder = raw("");
         if (token != null) {

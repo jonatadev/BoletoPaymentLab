@@ -7,6 +7,13 @@ O Keycloak local emite JWTs para o realm `boleto-lab`. A API verifica
 assinatura, emissor, timestamps e a audiência padrão `boleto-api` com
 chaves públicas JWKS. As rotas exigem escopos por operação.
 
+A proteção CSRF do Spring Security permanece ativa na API e no MCP. O Resource
+Server dispensa o token CSRF para requisições que apresentam um Bearer token no
+cabeçalho `Authorization` e continua validando o JWT e seus escopos. Nos demais
+pedidos de escrita, a proteção pode emitir um cookie `XSRF-TOKEN` sem criar
+sessão HTTP. Esse cookie carrega apenas o token CSRF. Credenciais ausentes ou
+inválidas continuam retornando `401`; um JWT sem o escopo exigido retorna `403`.
+
 As permissões têm alcance sobre os dados sintéticos do laboratório. A
 versão atual não modela isolamento de locatários nem propriedade por
 cliente. A configuração local vincula a API e os serviços à interface de

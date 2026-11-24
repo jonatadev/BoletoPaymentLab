@@ -11,6 +11,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.security.authentication.InsufficientAuthenticationException;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -21,7 +22,10 @@ import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfException;
 import org.springframework.web.client.RestTemplate;
 import tools.jackson.databind.ObjectMapper;
 
@@ -33,7 +37,11 @@ class BoletoSecurity {
     SecurityFilterChain apiSecurity(
             HttpSecurity http, ObjectMapper json, @Value("${springdoc.api-docs.enabled:false}") boolean openApiEnabled)
             throws Exception {
-        return http.csrf(AbstractHttpConfigurer::disable)
+        AuthenticationEntryPoint unauthorized =
+                (request, response, exception) ->
+                        problem(response, json, 401, "Unauthorized", "UNAUTHORIZED", "Bearer");
+        // The resource server exempts Bearer requests from CSRF checks before validating the JWT.
+        return http.csrf(csrf -> csrf.csrfTokenRepository(new CookieCsrfTokenRepository()))
                 .requestCache(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(access -> {
@@ -77,20 +85,25 @@ class BoletoSecurity {
                             .denyAll();
                 })
                 .exceptionHandling(errors ->
-                        errors.authenticationEntryPoint((request, response, exception) ->
-                                        problem(response, json, 401, "Unauthorized", "UNAUTHORIZED", "Bearer"))
-                                .accessDeniedHandler((request, response, exception) ->
-                                        problem(
+                        errors.authenticationEntryPoint(unauthorized)
+                                .accessDeniedHandler((request, response, exception) -> {
+                                    if (exception instanceof CsrfException) {
+                                        unauthorized.commence(
+                                                request,
                                                 response,
-                                                json,
-                                                403,
-                                                "Forbidden",
-                                                "FORBIDDEN",
-                                                "Bearer error=\"insufficient_scope\"")))
-                .oauth2ResourceServer(server ->
-                        server.authenticationEntryPoint((request, response, exception) ->
-                                        problem(response, json, 401, "Unauthorized", "UNAUTHORIZED", "Bearer"))
-                                .jwt(Customizer.withDefaults()))
+                                                new InsufficientAuthenticationException("Bearer token required"));
+                                        return;
+                                    }
+                                    problem(
+                                            response,
+                                            json,
+                                            403,
+                                            "Forbidden",
+                                            "FORBIDDEN",
+                                            "Bearer error=\"insufficient_scope\"");
+                                }))
+                .oauth2ResourceServer(
+                        server -> server.authenticationEntryPoint(unauthorized).jwt(Customizer.withDefaults()))
                 .build();
     }
 

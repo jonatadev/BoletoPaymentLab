@@ -1,6 +1,7 @@
 package org.example.samplemicroservice.analytics;
 
 import jakarta.servlet.DispatcherType;
+import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
 import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -8,10 +9,12 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.security.authentication.InsufficientAuthenticationException;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
@@ -19,7 +22,11 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.server.resource.web.BearerTokenAuthenticationEntryPoint;
+import org.springframework.security.oauth2.server.resource.web.access.BearerTokenAccessDeniedHandler;
+import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationConverter;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfException;
 import org.springframework.web.client.RestTemplate;
 
 @Configuration(proxyBeanMethods = false)
@@ -39,9 +46,20 @@ class AnalyticsSecurity {
             entryPoint.setResourceMetadataParameterResolver(
                     request -> oauth.resource().resolve("/.well-known/oauth-protected-resource").toASCIIString());
         }
-        return http.csrf(AbstractHttpConfigurer::disable)
+        var bearer = new BearerTokenAuthenticationConverter();
+        var forbidden = new BearerTokenAccessDeniedHandler();
+        // The resource server exempts Bearer requests from CSRF checks before validating the JWT.
+        return http.csrf(csrf -> csrf.csrfTokenRepository(new CookieCsrfTokenRepository()))
                 .requestCache(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .exceptionHandling(errors ->
+                        errors.accessDeniedHandler((request, response, exception) -> {
+                            if (exception instanceof CsrfException) {
+                                entryPoint.commence(request, response, missingOrMalformedBearer(bearer, request));
+                                return;
+                            }
+                            forbidden.handle(request, response, exception);
+                        }))
                 .authorizeHttpRequests(access ->
                         access.dispatcherTypeMatchers(DispatcherType.ERROR)
                                 .permitAll()
@@ -66,6 +84,16 @@ class AnalyticsSecurity {
                     }
                 })
                 .build();
+    }
+
+    private static AuthenticationException missingOrMalformedBearer(
+            BearerTokenAuthenticationConverter bearer, HttpServletRequest request) {
+        try {
+            bearer.convert(request);
+            return new InsufficientAuthenticationException("Bearer token required");
+        } catch (AuthenticationException failure) {
+            return failure;
+        }
     }
 
     private static void requireHttps(URI uri) {

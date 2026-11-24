@@ -17,6 +17,7 @@ import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import com.sun.net.httpserver.HttpServer;
+import jakarta.servlet.http.Cookie;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
@@ -73,7 +74,31 @@ class McpContractTests {
                 .andExpect(
                         header().string(
                                         "WWW-Authenticate",
-                                        Matchers.containsString(RESOURCE + "/.well-known/oauth-protected-resource")));
+                                        Matchers.containsString(RESOURCE + "/.well-known/oauth-protected-resource")))
+                .andExpect(header().string("Set-Cookie", Matchers.not(Matchers.containsString("JSESSIONID"))));
+    }
+
+    @Test
+    void shouldRejectCookieOnlyMcpRequests() throws Exception {
+        mvc.perform(
+                        post("/mcp")
+                                .header("Origin", "https://other.example.test")
+                                .cookie(new Cookie("access_token", validBearer().substring("Bearer ".length())))
+                                .contentType("application/json")
+                                .content(INITIALIZE))
+                .andExpect(status().isUnauthorized())
+                .andExpect(header().string("WWW-Authenticate", Matchers.containsString(RESOURCE)));
+    }
+
+    @Test
+    void shouldPreserveTheChallengeForMalformedBearerCredentials() throws Exception {
+        mvc.perform(
+                        post("/mcp")
+                                .header("Authorization", "Bearer malformed token")
+                                .contentType("application/json")
+                                .content(INITIALIZE))
+                .andExpect(status().isUnauthorized())
+                .andExpect(header().string("WWW-Authenticate", Matchers.containsString("error=\"invalid_token\"")));
     }
 
     @ParameterizedTest
