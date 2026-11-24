@@ -15,10 +15,16 @@ original de vencimento e retorna o mesmo UUID com o estado efetivo atual.
 
 ## Fluxo de emissão
 
+A sequência acompanha uma chave inédita com bloqueio disponível. O commit
+confirma a emissão e deixa o evento pendente no Outbox. A
+[publicação assíncrona](../referencia/eventos.md#processamento-assíncrono)
+tem seu próprio ciclo. A sequência corresponde ao caso de uso
+`UC-BPL-001`, conforme `specs/usecases/UC-BPL-001-emitir-boleto.md`.
+
 ```mermaid
 sequenceDiagram
-  accTitle: Emissão de boleto e commit
-  accDescr: As setas indicam a ordem entre cliente, API e PostgreSQL.
+  accTitle: Nova emissão de boleto e commit
+  accDescr: Uma requisição com chave inédita adquire o bloqueio, confirma boleto e Outbox no PostgreSQL e recebe 201.
   participant C as Cliente autorizado
   participant A as API de boletos
   participant P as PostgreSQL

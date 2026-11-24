@@ -41,7 +41,7 @@ ainda necessárias para migrar o formato.
 ```mermaid
 sequenceDiagram
   accTitle: Publicação e consumo de eventos no Kafka
-  accDescr: O relay aguarda confirmação do broker e o consumidor deduplica pelo ID.
+  accDescr: O commit da mudança precede a publicação. A confirmação do Outbox e o consumo do registro no Kafka podem ocorrer em paralelo.
   participant A as Emissão ou transição
   participant P as PostgreSQL
   participant R as Publicador Outbox
@@ -52,12 +52,15 @@ sequenceDiagram
   R->>P: Selecionar próximo evento com SKIP LOCKED
   R->>K: Publicar JSON com aggregateId como chave
   alt Broker confirma
-    K-->>R: Confirmação
-    R->>P: Marcar publicado e confirmar transação
-    K->>C: Entregar evento
-    C->>P: Inserir recibo por eventId
-    C-->>K: Confirmar consumo após sucesso
-  else Publicação falha
+    par Relé registra a confirmação
+      K-->>R: Confirmação
+      R->>P: Marcar publicado e confirmar transação
+    and Consumidor processa o registro
+      K->>C: Entregar evento
+      C->>P: Inserir recibo por eventId se ausente
+      C-->>K: Confirmar consumo após sucesso
+    end
+  else Relé recebe falha ou timeout
     R->>P: Manter pendente e agendar nova tentativa
   end
 ```
@@ -67,8 +70,11 @@ quatro publicações por rodada. Uma falha adia a próxima tentativa com
 backoff exponencial e jitter, limitado a um minuto. Eventos com versões
 posteriores aguardam o evento anterior pendente do mesmo boleto.
 
-Uma queda entre o ACK Kafka e o commit do Outbox pode provocar nova
-entrega. A garantia é *at-least-once*. O consumidor educacional usa
+O consumidor depende do registro no Kafka. Ele pode receber o evento antes
+de o relé marcar a linha do Outbox como publicada. Um timeout também pode
+deixar o relé sem confirmação mesmo que o broker tenha gravado o registro.
+Uma queda entre o ACK Kafka e o commit do Outbox pode provocar nova entrega.
+A garantia é *at-least-once*. O consumidor educacional usa
 `processed_boleto_event` e trata um `eventId` já recebido como repetição.
 O registro do recibo ocorre antes de a entrega ser considerada processada.
 
@@ -78,17 +84,19 @@ entre HTTP, publicação e consumo.
 
 ## Ciclo do Transactional Outbox
 
-O relay libera a linha após registrar a confirmação ou reagendar uma falha. Consulte o [ADR 003](../decisoes/outbox.md).
+A escolha do evento, a publicação e a atualização da linha ocorrem dentro
+da transação do relé. Consulte o [ADR 003](../decisoes/outbox.md) e a
+[emissão idempotente](../arquitetura/idempotencia.md#fluxo-de-emissão).
 
 ```mermaid
 flowchart TD
   accTitle: Persistência e retentativas do Outbox
-  accDescr: O relay libera a linha após registrar a confirmação ou reagendar uma falha.
+  accDescr: O relé retém o bloqueio da linha até o commit da confirmação ou do reagendamento.
   A["Mudança de estado"] --> B["Commit no PostgreSQL com auditoria e Outbox"]
   B --> C["Relay seleciona o próximo evento com SKIP LOCKED"]
   C --> D{"Kafka confirmou?"}
-  D -->|"Sim"| E["Registrar published_at"]
-  D -->|"Falha ou timeout"| F["Reagendar com backoff"]
-  F --> C
-  E --> G["Uma queda antes do commit pode causar reentrega"]
+  D -->|"Sim"| E["Registrar published_at e confirmar"]
+  D -->|"Falha ou timeout"| F["Reagendar com backoff e confirmar"]
+  F -->|"Após next_attempt_at"| C
+  E -->|"Commit concluído"| G["Evento deixa a fila de pendentes"]
 ```
