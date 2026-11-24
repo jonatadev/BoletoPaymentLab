@@ -41,7 +41,8 @@ services:
       MCP_DATABASE_URL: "jdbc:postgresql://postgres:5432/${POSTGRES_DB:?Set POSTGRES_DB in .env}"
       MCP_DATABASE_USERNAME: ${MCP_DATABASE_USERNAME:?Set MCP_DATABASE_USERNAME in .env}
       MCP_DATABASE_PASSWORD: ${MCP_DATABASE_PASSWORD:?Set MCP_DATABASE_PASSWORD in .env}
-      MCP_AUTH_ISSUER: http://keycloak:8080/realms/boleto-lab
+      MCP_AUTH_ISSUER: http://127.0.0.1:8180/realms/boleto-lab
+      MCP_AUTH_JWKS: http://keycloak:8080/realms/boleto-lab/protocol/openid-connect/certs
       MCP_AUTH_AUDIENCE: boleto-analytics-mcp
     ports:
       - "127.0.0.1:${MCP_SERVER_PORT:-8090}:8090"

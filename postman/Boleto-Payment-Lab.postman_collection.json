@@ -709,7 +709,13 @@
         "url": "{{baseUrl}}/api/v1/boletos/{{boletoId}}/revisions?size=20",
         "auth": {
           "type": "bearer",
-          "bearer": [{ "key": "token", "value": "{{operatorToken}}", "type": "string" }]
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{operatorToken}}",
+              "type": "string"
+            }
+          ]
         }
       }
     },
@@ -720,7 +726,13 @@
         "url": "{{baseUrl}}/api/v1/boletos/{{boletoId}}/revisions/{{latestRevision}}",
         "auth": {
           "type": "bearer",
-          "bearer": [{ "key": "token", "value": "{{operatorToken}}", "type": "string" }]
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{operatorToken}}",
+              "type": "string"
+            }
+          ]
         }
       }
     },
@@ -732,7 +744,13 @@
         "url": "{{baseUrl}}/api/v1/boletos/{{boletoId}}/revisions/compare?from={{firstComparedRevision}}&to={{latestRevision}}",
         "auth": {
           "type": "bearer",
-          "bearer": [{ "key": "token", "value": "{{operatorToken}}", "type": "string" }]
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{operatorToken}}",
+              "type": "string"
+            }
+          ]
         }
       }
     },
@@ -786,6 +804,204 @@
         },
         "header": []
       }
+    },
+    {
+      "name": "Analytics MCP",
+      "description": "Use the local MCP with the OAuth overlay. Set mcpToken locally to a signed token with analytics:read. Run the requests in sequence.",
+      "item": [
+        {
+          "name": "Discover protected resource",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [],
+            "url": "{{mcpBaseUrl}}/.well-known/oauth-protected-resource"
+          }
+        },
+        {
+          "name": "Initialize MCP",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{mcpToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, text/event-stream"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{mcpBaseUrl}}/mcp",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"initialize\",\n  \"id\": 1,\n  \"params\": {\n    \"protocolVersion\": \"2025-03-26\",\n    \"capabilities\": {},\n    \"clientInfo\": {\n      \"name\": \"postman-bpl\",\n      \"version\": \"1.0\"\n    }\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('MCP initialized', () => pm.response.to.have.status(200));",
+                  "const session = pm.response.headers.get('Mcp-Session-Id');",
+                  "if (pm.response.code === 200 && session) pm.environment.set('mcpSessionId', session);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Confirm initialization",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{mcpToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, text/event-stream"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Mcp-Session-Id",
+                "value": "{{mcpSessionId}}"
+              },
+              {
+                "key": "MCP-Protocol-Version",
+                "value": "2025-03-26"
+              }
+            ],
+            "url": "{{mcpBaseUrl}}/mcp",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"notifications/initialized\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "List analytics tools",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{mcpToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, text/event-stream"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Mcp-Session-Id",
+                "value": "{{mcpSessionId}}"
+              },
+              {
+                "key": "MCP-Protocol-Version",
+                "value": "2025-03-26"
+              }
+            ],
+            "url": "{{mcpBaseUrl}}/mcp",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"tools/list\",\n  \"id\": 2,\n  \"params\": {}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Check database health",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{mcpToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, text/event-stream"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Mcp-Session-Id",
+                "value": "{{mcpSessionId}}"
+              },
+              {
+                "key": "MCP-Protocol-Version",
+                "value": "2025-03-26"
+              }
+            ],
+            "url": "{{mcpBaseUrl}}/mcp",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"tools/call\",\n  \"id\": 3,\n  \"params\": {\n    \"name\": \"get_database_health\",\n    \"arguments\": {}\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
     }
   ]
 }
