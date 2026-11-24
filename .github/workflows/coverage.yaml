@@ -30,8 +30,11 @@ jobs:
           java-version: '25'
           cache: gradle
 
-      - name: Check Java formatting and run application, OpenAPI contract and MCP tests
-        run: ./gradlew check jacocoTestReport :boleto-analytics-mcp:jacocoTestReport --no-daemon
+      - name: Check Java formatting with Spotless
+        run: ./gradlew spotlessCheck --no-daemon
+
+      - name: Run application, OpenAPI contract and MCP tests
+        run: ./gradlew test integrationTest jacocoTestReport :boleto-analytics-mcp:jacocoTestReport --no-daemon
 
       - name: Explain skipped Codecov upload
         if: ${{ env.CODECOV_TOKEN == '' }}

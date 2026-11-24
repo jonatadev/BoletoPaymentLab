@@ -31,8 +31,8 @@ No Windows, execute na raiz do projeto:
 ```
 
 Em Linux ou macOS, use `./gradlew` com as mesmas tarefas. Revise o diff e
-execute `spotlessCheck` novamente após a correção. O GitHub Actions usa
-`check`, que valida a formatação sem editar os fontes.
+execute `spotlessCheck` novamente após a correção. O GitHub Actions executa
+`spotlessCheck` em uma etapa própria antes dos testes, sem editar os fontes.
 
 No IntelliJ IDEA, abra o projeto Gradle com o Wrapper e selecione o JDK 25
 em **Settings > Build, Execution, Deployment > Build Tools > Gradle > Gradle JVM**.
