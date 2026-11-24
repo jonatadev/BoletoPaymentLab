@@ -1,4 +1,7 @@
 .env
+.env.*
+!.env.example
+.kafka-secrets
 .git
 .gradle
 build

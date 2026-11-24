@@ -30,6 +30,12 @@ spring:
         size: 2
   kafka:
     bootstrap-servers: ${BPL_KAFKA_BOOTSTRAP:127.0.0.1:9092}
+    properties:
+      "[security.protocol]": SASL_SSL
+      "[sasl.mechanism]": SCRAM-SHA-512
+      "[ssl.endpoint.identification.algorithm]": https
+      "[ssl.truststore.type]": PEM
+      "[ssl.truststore.location]": ${BPL_KAFKA_CA:.kafka-secrets/local/app/ca.pem}
     producer:
       acks: all
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
@@ -40,6 +46,8 @@ spring:
         "[request.timeout.ms]": 2500
         "[delivery.timeout.ms]": 5000
     consumer:
+      properties:
+        "[allow.auto.create.topics]": false
       group-id: ${BPL_KAFKA_GROUP:boleto-lab-educational}
       auto-offset-reset: earliest
       enable-auto-commit: false

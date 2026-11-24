@@ -12,6 +12,7 @@ slug: /decisoes
 | [005](./avro.md) | Proposta | Avaliar Avro e Schema Registry. |
 | [006](./fronteiras-de-aplicacao.md) | Confirmada | Fronteiras de emissão, leitura, PDF e eventos. |
 | [007](./envers.md) | Confirmada | Auditoria JPA e histórico seletivo de boletos com Envers. |
+| [008](./kafka.md) | Confirmada | SCRAM sobre TLS, mTLS e ACLs no Kafka. |
 
 Uma decisão confirmada descreve o que está em uso. Propostas registram
 alternativas em avaliação. Se uma implementação substituir uma decisão,

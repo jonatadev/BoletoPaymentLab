@@ -11,7 +11,7 @@ do Compose quando necessário.
 | PostgreSQL | `postgres:17.12-bookworm` | `POSTGRES_PORT`, padrão 5433. |
 | Keycloak | `quay.io/keycloak/keycloak:26.8.2` | `KEYCLOAK_PORT`, padrão 8180. |
 | Kafka | `apache/kafka:4.2.2` | `KAFKA_PORT`, padrão 9092. |
-| Kafbat UI | `ghcr.io/kafbat/kafka-ui:v1.5.1` | Loopback em `8085`. |
+| Kafbat UI | `ghcr.io/kafbat/kafka-ui:v1.5.1` | Perfil opcional `kafka-ui`, loopback em `8085`. |
 | Jaeger | `cr.jaegertracing.io/jaegertracing/jaeger:2.23.0` | UI em `JAEGER_PORT` (16686), OTLP/HTTP em `OTLP_PORT` (4318). |
 | BoletoPaymentLab | `boleto-payment-lab:local` | Perfil opcional `app`, HTTP em `APP_PORT` (8080). |
 
@@ -19,15 +19,14 @@ O serviço de aplicação é opcional no perfil `app`. Ele usa a imagem
 `boleto-payment-lab:local`, conecta-se aos serviços pelo nome da rede Compose
 e publica HTTP somente em loopback.
 
-O Kafka usa KRaft com um único nó, listener interno para a rede Compose
-e listener no host para a aplicação. PostgreSQL, Kafka e Keycloak usam
+O Kafka usa KRaft com um único nó e uma rede dedicada. Os listeners de
+aplicação usam SCRAM sobre TLS. PostgreSQL, Kafka e Keycloak usam
 volumes nomeados. O Jaeger usa armazenamento em memória.
 
-O Kafbat UI usa `kafka:29092` na rede Compose e é publicado apenas em
-`127.0.0.1:8085`. Ele permite visualizar tópicos, partições, offsets,
-mensagens, keys, headers e consumer groups. No contexto atual, o Schema
-Registry não está configurado, portanto o projeto não usa integração de
-esquemas nem visualização Avro.
+O Kafbat UI usa `kafka:29092` na rede dedicada. Após o login, a UI dá acesso
+aos metadados do tópico e grupo autorizados. Veja o
+[guia de segurança do Kafka](./kafka-seguro.md) para geração de credenciais,
+provisionamento e operação.
 
 ## Configuração local
 
@@ -48,6 +47,7 @@ Se mudar uma porta, ajuste também o cliente correspondente:
 ## Checagem e diagnóstico
 
 ```powershell
+python infra/kafka/generate-local.py
 docker compose config --quiet
 docker compose up -d
 docker compose ps

@@ -12,7 +12,7 @@ const components = [
   {id: 'pdf', label: 'PDFBox', kind: 'Documento', x: 770, y: 0, path: '/arquitetura/dominio#emissão-e-documento', detail: 'Renderiza o PDF educacional em memória, sob demanda.'},
   {id: 'db', label: 'PostgreSQL', kind: 'Banco', x: 770, y: 160, path: '/operacao/dados', detail: 'Armazena boletos, associações idempotentes, auditoria, outbox e recibos de deduplicação.'},
   {id: 'outbox', label: 'Relay e consumidor', kind: 'Mensageria', x: 500, y: 350, path: '/referencia/eventos', detail: 'O relay publica eventos pendentes. O consumidor registra recibos por ID do evento.'},
-  {id: 'kafka', label: 'Kafka', kind: 'Mensageria', x: 770, y: 350, path: '/referencia/eventos', detail: 'Broker local em KRaft. A entrega entre PostgreSQL e Kafka é pelo menos uma vez.'},
+  {id: 'kafka', label: 'Kafka', kind: 'Mensageria', x: 770, y: 350, path: '/operacao/kafka-seguro', detail: 'Broker em KRaft com SCRAM-SHA-512 sobre TLS e ACLs literais. O plano de controle usa mTLS.'},
   {id: 'jaeger', label: 'Jaeger', kind: 'Observabilidade', x: 1030, y: 55, path: '/operacao/observabilidade', detail: 'Recebe spans por OTLP/HTTP quando a exportação está habilitada.'},
 ];
 
@@ -24,7 +24,7 @@ const connections = [
   ['app', 'pdf', 'PDF em memória'],
   ['app', 'db', 'JPA / JDBC'],
   ['outbox', 'db', 'JDBC'],
-  ['outbox', 'kafka', 'Protocolo Kafka'],
+  ['outbox', 'kafka', 'SASL_SSL'],
   ['api', 'jaeger', 'OTLP/HTTP'],
   ['outbox', 'jaeger', 'OTLP/HTTP'],
 ];

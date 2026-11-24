@@ -1,0 +1,5 @@
+services:
+  kafka:
+    networks:
+      kafka:
+        aliases: [kafka-bad-hostname]
