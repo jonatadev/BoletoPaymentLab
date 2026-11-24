@@ -26,7 +26,10 @@ Os relatorios sao gerados em:
 - HTML: `build/reports/jacoco/test/html/index.html`;
 - XML: `build/reports/jacoco/test/jacocoTestReport.xml`.
 
-O HTML serve para inspecao local por pacote, classe, linha e branch. O XML e o artefato consumido pelo Codecov. A cobertura dos testes PostgreSQL, Kafka e Jaeger e incluida quando as variaveis `BPL_IT_*` documentadas em [Testes e validacao](./testes.md) estao configuradas; sem elas, as respectivas suites sao ignoradas deliberadamente.
+O HTML permite inspecionar a cobertura por pacote, classe, linha e branch.
+O Codecov consome o XML. Os testes de PostgreSQL e Kafka usam
+Testcontainers com Docker. A consulta ao Jaeger é opcional e usa as
+variáveis descritas em [Testes e validação](./testes.md).
 
 ## CI e pull requests
 

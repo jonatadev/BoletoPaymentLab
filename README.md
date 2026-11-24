@@ -124,6 +124,9 @@ See [Kafka operations](docs-site/docs/operacao/kafka-seguro.md) and
 To confirm the realm import, open
 `http://127.0.0.1:8180/realms/boleto-lab/.well-known/openid-configuration`.
 The first Keycloak startup can take several minutes on a cold Docker host.
+For REST tokens obtained from the host, running the API in Docker requires
+the host issuer and the container-network JWKS URL. See
+[the container startup example](docs-site/docs/inicio/executar.md#iniciar-a-api-em-contêiner).
 
 Use `--spring.profiles.active=local,platform` in IntelliJ for Kafka and OTLP.
 Set `SPRING_CONFIG_IMPORT=file:./.kafka-secrets/local/app/spring.yaml` for

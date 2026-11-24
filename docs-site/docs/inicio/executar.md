@@ -53,17 +53,28 @@ pela linha de comando:
 .\gradlew.bat bootRun --args="--spring.profiles.active=local,platform"
 ```
 
-## Iniciar a imagem Docker
+## Iniciar a API em contêiner
 
 A imagem local usa o nome `boleto-payment-lab:local`. O Docker exige nomes
 de repositório em minúsculas, enquanto a identidade da aplicação permanece
 `BoletoPaymentLab`.
 
+O Compose base configura a API com o emissor interno. Para usar os tokens
+que o Keycloak anuncia ao Postman no host, configure o issuer do host e
+o JWKS interno na execução local. Use a porta efetiva do Keycloak no
+valor de `$issuer` e deixe a porta da API livre.
+
 ```powershell
-docker compose --profile app build boleto-payment-lab
-docker compose --profile app up -d boleto-payment-lab
-docker compose --profile app ps boleto-payment-lab
+$issuer = 'http://127.0.0.1:8180/realms/boleto-lab'
+$jwks = 'http://keycloak:8080/realms/boleto-lab/protocol/openid-connect/certs'
+docker compose --profile app run --build --rm --service-ports `
+  -e "BPL_OIDC_ISSUER=$issuer" -e "BPL_OIDC_JWKS=$jwks" boleto-payment-lab
 ```
+
+O comando usa o perfil Spring `platform` e depende do lote
+`kafka-provision`. Rode as requisições em outro terminal. Consulte
+[Emissor e JWKS](../operacao/seguranca.md#emissor-e-jwks-no-keycloak)
+para diagnosticar uma resposta `401`.
 
 ## Usar o Postman
 

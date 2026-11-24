@@ -11,13 +11,19 @@ do Compose quando necessário.
 | PostgreSQL | `postgres:17.12-bookworm` | `POSTGRES_PORT`, padrão 5433. |
 | Keycloak | `quay.io/keycloak/keycloak:26.8.2` | `KEYCLOAK_PORT`, padrão 8180. |
 | Kafka | `apache/kafka:4.2.2` | `KAFKA_PORT`, padrão 9092. |
-| Kafbat UI | `ghcr.io/kafbat/kafka-ui:v1.5.1` | Perfil opcional `kafka-ui`, loopback em `8085`. |
+| Provisionamento Kafka | `boleto-kafka-admin:local` | Execução única, sem porta publicada. |
+| Kafbat UI | `ghcr.io/kafbat/kafka-ui:v1.5.1` | Perfil opcional `kafka-ui`, `KAFKA_UI_PORT` (8085). |
 | Jaeger | `cr.jaegertracing.io/jaegertracing/jaeger:2.23.0` | UI em `JAEGER_PORT` (16686), OTLP/HTTP em `OTLP_PORT` (4318). |
 | BoletoPaymentLab | `boleto-payment-lab:local` | Perfil opcional `app`, HTTP em `APP_PORT` (8080). |
+| MCP analítico | `boleto-analytics-mcp:local` | Perfil opcional `mcp`, `MCP_SERVER_PORT` (8090). |
 
 O serviço de aplicação é opcional no perfil `app`. Ele usa a imagem
 `boleto-payment-lab:local`, conecta-se aos serviços pelo nome da rede Compose
 e publica HTTP somente em loopback.
+Para aceitar tokens solicitados pelo Postman no host, siga
+[Iniciar a API em contêiner](../inicio/executar.md#iniciar-a-api-em-contêiner).
+O [perfil MCP](./mcp-analytics.md#executar-localmente) usa a role leitora
+no PostgreSQL e tem configuração própria de issuer e JWKS.
 
 O Kafka usa KRaft com um único nó e uma rede dedicada. Os listeners de
 aplicação usam SCRAM sobre TLS. PostgreSQL, Kafka e Keycloak usam
@@ -51,6 +57,7 @@ python infra/kafka/generate-local.py
 docker compose config --quiet
 docker compose up -d
 docker compose ps
+docker compose ps -a kafka kafka-provision
 docker compose logs --tail 60 kafka
 ```
 
@@ -59,6 +66,11 @@ variáveis resolvidas. O status do contêiner e a prontidão da API verificam
 camadas diferentes. Para o Keycloak, confira o documento de descoberta em
 `/realms/boleto-lab/.well-known/openid-configuration`. O primeiro boot pode
 levar alguns minutos.
+
+O Kafka deve ficar `healthy` e `kafka-provision` deve aparecer como
+`Exited (0)`. API em contêiner e Kafka UI dependem dessa conclusão.
+Para o Jaeger, siga [Logs, métricas e traces](./observabilidade.md)
+para conferir a ingestão e a consulta pelo ID do trace.
 
 Alterar variáveis de bootstrap em `.env` não redefine usuários ou senhas
 de um volume já inicializado. Ao diagnosticar inicialização, preserve os

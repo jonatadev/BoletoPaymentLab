@@ -5,7 +5,8 @@ title: Arquitetura e pacotes
 O Boleto Payment Lab é uma aplicação Spring Boot 4.2.0 com Java 25, organizada
 como monólito modular. O PostgreSQL é a fonte de verdade para emissão, estado,
 auditoria e eventos pendentes. Keycloak, Kafka e Jaeger são serviços locais
-externos ao processo da API.
+externos ao processo da API. O MCP analítico executa em outro processo e
+consulta somente as views do PostgreSQL.
 
 ## Componentes
 
@@ -18,15 +19,22 @@ flowchart LR
   App -->|"Chaves públicas JWKS"| OIDC
   App -->|"JPA e JDBC transacional"| DB[("PostgreSQL")]
   App -->|"PDF sob demanda"| PDF["Apache PDFBox em memória"]
-  App -->|"Outbox relay"| Kafka["Kafka em KRaft"]
-  Kafka -->|"Listener educacional"| App
+  App -->|"Publicação e consumo por SASL_SSL"| Kafka["Kafka em KRaft"]
+  Provision["Provisionador Kafka"] -->|"mTLS no listener ADMIN"| Kafka
+  UI["Kafbat UI opcional"] -->|"SASL_SSL · somente metadados"| Kafka
   App -->|"OTLP/HTTP"| Jaeger["Jaeger"]
+  McpClient["Cliente MCP"] -->|"Streamable HTTP e JWT"| MCP["MCP analítico opcional"]
+  MCP -->|"JWKS da instalação local"| OIDC
+  MCP -->|"JDBC · views analytics"| DB
 ```
 
 O endereço padrão da aplicação usa HTTP e bind em loopback. O cliente obtém o
 JWT antes de chamar a API. O emissor do JWT e o broker podem falhar de forma
 independente do banco. Um boleto já confirmado mantém seus registros
 transacionais mesmo quando a publicação está indisponível.
+Veja [Segurança do Kafka](../operacao/kafka-seguro.md),
+[MCP analítico](../operacao/mcp-analytics.md) e
+[Observabilidade](../operacao/observabilidade.md) para os fluxos detalhados.
 
 ## Estrutura Java
 

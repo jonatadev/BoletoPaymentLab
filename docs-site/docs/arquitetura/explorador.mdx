@@ -8,8 +8,8 @@ import ArchitectureExplorer from '../../src/components/ArchitectureExplorer';
 
 Selecione um componente no mapa ou na lista ao lado para ver sua
 responsabilidade e abrir a documentação. As setas mostram dependências
-e integrações. O mapa descreve a arquitetura do laboratório, incluindo
-Kafka e Jaeger quando o perfil de plataforma está ativo.
+e integrações. O mapa mostra as conexões da API, serviços de plataforma
+e componentes opcionais como Kafbat UI, MCP e o Keycloak isolado.
 
 <ArchitectureExplorer />
 
@@ -24,8 +24,11 @@ Kafka e Jaeger quando o perfil de plataforma está ativo.
 - **Mensageria.** O relay lê o Outbox e publica no Kafka. O consumidor
   recebe do Kafka e registra o evento processado no PostgreSQL. Ambos usam
   [SCRAM-SHA-512 sobre TLS](../operacao/kafka-seguro.md).
+- **MCP.** O [processo analítico](../operacao/mcp-analytics.md) consulta
+  views no PostgreSQL com uma role leitora. O Keycloak isolado atende ao
+  overlay ChatGPT. Na instalação local, o MCP usa o Keycloak padrão.
 - **Observabilidade.** A instrumentação exporta spans ao Jaeger por
-  OTLP/HTTP quando a exportação está habilitada.
+  [OTLP/HTTP](../operacao/observabilidade.md) quando a exportação está habilitada.
 
 Veja [Arquitetura e pacotes](./visao-geral.md) e
 [Idempotência e concorrência](./idempotencia.md).

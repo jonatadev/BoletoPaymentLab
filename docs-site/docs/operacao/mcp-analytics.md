@@ -11,6 +11,8 @@ de SQL livre. A mudança é especificada em
 
 ```mermaid
 flowchart LR
+    accTitle: Fluxo de leitura do MCP analítico
+    accDescr: Um cliente autenticado invoca tools tipadas que leem views do PostgreSQL.
     Client[Cliente MCP autenticado] -->|Streamable HTTP + JWT| Mcp[boleto-analytics-mcp]
     Mcp -->|tools tipadas| Service[AnalyticsService]
     Service -->|SELECT parametrizado| Views[Views analytics]
@@ -51,8 +53,8 @@ em arquivos versionados.
 
 ## Executar localmente
 
-1. Aplique a aplicação principal uma vez para criar as migrations, incluindo
-   `V7__analytics_views.sql`.
+1. Inicie a aplicação principal uma vez para aplicar as migrações do
+   [PostgreSQL](./dados.mdx), incluindo V7 e V8 do esquema analítico.
 2. Provisione a role leitora com o script de infraestrutura e uma senha local
    segura.
 3. Defina `MCP_DATABASE_URL`, `MCP_DATABASE_USERNAME`,
@@ -67,6 +69,11 @@ em arquivos versionados.
 O perfil expõe a porta apenas em loopback. Para acesso fora da máquina, é
 necessário HTTPS, um gateway autenticado e rate limiting; essa política não é
 implementada pelo laboratório.
+
+No Compose base, o MCP valida o [issuer e a audiência próprios do MCP](./seguranca.md#emissor-e-jwks-no-keycloak).
+No Postman, use a pasta **Analytics MCP** com um token local que inclua
+`analytics:read`. A sequência de exemplo inicializa a sessão, confirma a
+inicialização e consulta as ferramentas e a disponibilidade do banco.
 
 ## Provisionar o cliente OAuth do ChatGPT
 
@@ -101,6 +108,21 @@ Use um workspace com acesso a apps MCP personalizados, um perfil ativo do
 OpenAI Secure MCP Tunnel e um hostname HTTPS aprovado para OAuth.
 Use apenas dados sintéticos e uma conta de teste sem privilégios
 administrativos no realm `boleto-lab`.
+
+```mermaid
+flowchart LR
+  accTitle: Rotas do MCP e da autenticação externa
+  accDescr: As chamadas MCP usam um túnel dedicado. O navegador acessa o Keycloak isolado por um proxy OAuth.
+  ChatGPT["ChatGPT"] -->|"Streamable HTTP"| Tunnel["Secure MCP Tunnel"]
+  Tunnel -->|"/mcp em loopback"| MCP["MCP analítico"]
+  Browser["Navegador"] -->|"OAuth sobre HTTPS"| Edge["Cloudflare ou ngrok"]
+  Edge -->|"Rotas permitidas"| Proxy["Proxy Nginx"]
+  Proxy -->|"OAuth e OIDC"| Keycloak["Keycloak isolado"]
+  MCP -->|"JWKS na rede interna"| Keycloak
+```
+
+O diagrama mostra a configuração opcional. A validação da conexão real
+com o ChatGPT está no [roadmap](../roadmap.md).
 
 1. Suba a infraestrutura local pelo procedimento acima e confirme que
    PostgreSQL e a role leitora do MCP estão prontos.
