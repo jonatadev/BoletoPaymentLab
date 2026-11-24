@@ -30,68 +30,100 @@ class BoletoSecurity {
     private static final String BOLETOS = "/api/v1/boletos";
 
     @Bean
-    SecurityFilterChain apiSecurity(HttpSecurity http, ObjectMapper json,
-            @Value("${springdoc.api-docs.enabled:false}") boolean openApiEnabled) throws Exception {
-        return http
-                .csrf(AbstractHttpConfigurer::disable)
+    SecurityFilterChain apiSecurity(
+            HttpSecurity http, ObjectMapper json, @Value("${springdoc.api-docs.enabled:false}") boolean openApiEnabled)
+            throws Exception {
+        return http.csrf(AbstractHttpConfigurer::disable)
                 .requestCache(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(access -> {
                     if (openApiEnabled) {
-                        access.requestMatchers(HttpMethod.GET, "/v3/api-docs", "/v3/api-docs.yaml",
-                                "/v3/api-docs/swagger-config", "/swagger-ui.html", "/swagger-ui/**").permitAll();
+                        access.requestMatchers(
+                                        HttpMethod.GET,
+                                        "/v3/api-docs",
+                                        "/v3/api-docs.yaml",
+                                        "/v3/api-docs/swagger-config",
+                                        "/swagger-ui.html",
+                                        "/swagger-ui/**")
+                                .permitAll();
                     }
-                    access.dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
-                        .requestMatchers(HttpMethod.GET, "/actuator/health", "/actuator/health/liveness",
-                                "/actuator/health/readiness").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/actuator/metrics", "/actuator/metrics/*")
+                    access.dispatcherTypeMatchers(DispatcherType.ERROR)
+                            .permitAll()
+                            .requestMatchers(
+                                    HttpMethod.GET,
+                                    "/actuator/health",
+                                    "/actuator/health/liveness",
+                                    "/actuator/health/readiness")
+                            .permitAll()
+                            .requestMatchers(HttpMethod.GET, "/actuator/metrics", "/actuator/metrics/*")
                             .hasAuthority("SCOPE_ops:metrics")
-                        .requestMatchers(HttpMethod.POST, BOLETOS).hasAuthority("SCOPE_boletos:issue")
-                        .requestMatchers(HttpMethod.GET, BOLETOS).hasAuthority("SCOPE_boletos:list")
-                        .requestMatchers(HttpMethod.GET, BOLETOS + "/*/history", BOLETOS + "/*/revisions",
-                                BOLETOS + "/*/revisions/*").hasAuthority("SCOPE_boletos:audit")
-                        .requestMatchers(HttpMethod.GET, BOLETOS + "/*", BOLETOS + "/*/pdf")
+                            .requestMatchers(HttpMethod.POST, BOLETOS)
+                            .hasAuthority("SCOPE_boletos:issue")
+                            .requestMatchers(HttpMethod.GET, BOLETOS)
+                            .hasAuthority("SCOPE_boletos:list")
+                            .requestMatchers(
+                                    HttpMethod.GET,
+                                    BOLETOS + "/*/history",
+                                    BOLETOS + "/*/revisions",
+                                    BOLETOS + "/*/revisions/*")
+                            .hasAuthority("SCOPE_boletos:audit")
+                            .requestMatchers(HttpMethod.GET, BOLETOS + "/*", BOLETOS + "/*/pdf")
                             .hasAuthority("SCOPE_boletos:read")
-                        .requestMatchers(HttpMethod.POST, BOLETOS + "/*/payments").hasAuthority("SCOPE_boletos:pay")
-                        .requestMatchers(HttpMethod.POST, BOLETOS + "/*/cancellations")
+                            .requestMatchers(HttpMethod.POST, BOLETOS + "/*/payments")
+                            .hasAuthority("SCOPE_boletos:pay")
+                            .requestMatchers(HttpMethod.POST, BOLETOS + "/*/cancellations")
                             .hasAuthority("SCOPE_boletos:cancel")
-                        .anyRequest().denyAll();
+                            .anyRequest()
+                            .denyAll();
                 })
-                .exceptionHandling(errors -> errors
-                        .authenticationEntryPoint((request, response, exception) ->
-                            problem(response, json, 401, "Unauthorized", "UNAUTHORIZED", "Bearer"))
-                        .accessDeniedHandler((request, response, exception) ->
-                            problem(response, json, 403, "Forbidden", "FORBIDDEN",
-                                    "Bearer error=\"insufficient_scope\"")))
-                .oauth2ResourceServer(server -> server
-                        .authenticationEntryPoint((request, response, exception) ->
-                            problem(response, json, 401, "Unauthorized", "UNAUTHORIZED", "Bearer"))
-                        .jwt(Customizer.withDefaults()))
+                .exceptionHandling(errors ->
+                        errors.authenticationEntryPoint((request, response, exception) ->
+                                        problem(response, json, 401, "Unauthorized", "UNAUTHORIZED", "Bearer"))
+                                .accessDeniedHandler((request, response, exception) ->
+                                        problem(
+                                                response,
+                                                json,
+                                                403,
+                                                "Forbidden",
+                                                "FORBIDDEN",
+                                                "Bearer error=\"insufficient_scope\"")))
+                .oauth2ResourceServer(server ->
+                        server.authenticationEntryPoint((request, response, exception) ->
+                                        problem(response, json, 401, "Unauthorized", "UNAUTHORIZED", "Bearer"))
+                                .jwt(Customizer.withDefaults()))
                 .build();
     }
 
     @Bean
     @SuppressWarnings("removal") // Spring Security's JWKS builder currently accepts RestOperations.
-    JwtDecoder jwtDecoder(@Value("${bpl.security.issuer}") String issuer,
-            @Value("${bpl.security.jwks}") String jwks, @Value("${bpl.security.audience}") String audience) {
+    JwtDecoder jwtDecoder(
+            @Value("${bpl.security.issuer}") String issuer,
+            @Value("${bpl.security.jwks}") String jwks,
+            @Value("${bpl.security.audience}") String audience) {
         var requests = new SimpleClientHttpRequestFactory();
         requests.setConnectTimeout(Duration.ofSeconds(2));
         requests.setReadTimeout(Duration.ofSeconds(3));
         var decoder = NimbusJwtDecoder.withJwkSetUri(jwks).restOperations(new RestTemplate(requests)).build();
-        decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
-                JwtValidators.createDefaultWithIssuer(issuer),
-                jwt -> jwt.getExpiresAt() != null && jwt.getAudience() != null && jwt.getAudience().contains(audience)
-                        ? OAuth2TokenValidatorResult.success()
-                        : OAuth2TokenValidatorResult.failure(new OAuth2Error("invalid_token"))));
+        decoder.setJwtValidator(
+                new DelegatingOAuth2TokenValidator<>(
+                        JwtValidators.createDefaultWithIssuer(issuer),
+                        jwt ->
+                                jwt.getExpiresAt() != null
+                                                && jwt.getAudience() != null
+                                                && jwt.getAudience().contains(audience)
+                                        ? OAuth2TokenValidatorResult.success()
+                                        : OAuth2TokenValidatorResult.failure(new OAuth2Error("invalid_token"))));
         return decoder;
     }
 
-    private static void problem(HttpServletResponse response, ObjectMapper json, int status, String title,
-            String code, String challenge) throws IOException {
+    private static void problem(
+            HttpServletResponse response, ObjectMapper json, int status, String title, String code, String challenge)
+            throws IOException {
         response.setStatus(status);
         response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
         response.setHeader("WWW-Authenticate", challenge);
-        json.writeValue(response.getOutputStream(), Map.of(
-                "type", "about:blank", "status", status, "title", title, "code", code));
+        json.writeValue(
+                response.getOutputStream(),
+                Map.of("type", "about:blank", "status", status, "title", title, "code", code));
     }
 }

@@ -3,8 +3,8 @@ package org.example.samplemicroservice.boleto.application;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.UUID;
 import java.util.Optional;
+import java.util.UUID;
 import org.example.samplemicroservice.boleto.domain.BoletoStatus;
 import org.example.samplemicroservice.boleto.events.BoletoJournal;
 import org.example.samplemicroservice.boleto.events.BoletoJournal.AuditEntry;
@@ -23,8 +23,12 @@ public class BoletoLifecycle {
     private final BoletoTelemetry telemetry;
     private final TransactionTemplate transactions;
 
-    BoletoLifecycle(BoletoRepository boletos, BoletoJournal journal, Clock clock,
-            BoletoTelemetry telemetry, PlatformTransactionManager transactionManager) {
+    BoletoLifecycle(
+            BoletoRepository boletos,
+            BoletoJournal journal,
+            Clock clock,
+            BoletoTelemetry telemetry,
+            PlatformTransactionManager transactionManager) {
         this.boletos = boletos;
         this.journal = journal;
         this.clock = clock;
@@ -48,19 +52,22 @@ public class BoletoLifecycle {
     }
 
     public Snapshot change(UUID id, BoletoStatus target) {
-        return telemetry.observe("lifecycle.change", () -> {
-            Optional<Snapshot> changed = transactions.execute(transaction -> {
-                Boleto boleto = locked(id);
-                LocalDate today = LocalDate.now(clock);
-                materializeExpiry(boleto, today);
-                if (boleto.status() != BoletoStatus.EMITIDO) {
-                    return Optional.empty();
-                }
-                recordChange(boleto, target, "API");
-                return Optional.of(Snapshot.from(boleto, today));
-            });
-            return changed.orElseThrow(BoletoFailure.INVALID_STATE_TRANSITION::exception);
-        });
+        return telemetry.observe(
+                "lifecycle.change",
+                () -> {
+                    Optional<Snapshot> changed =
+                            transactions.execute(transaction -> {
+                                Boleto boleto = locked(id);
+                                LocalDate today = LocalDate.now(clock);
+                                materializeExpiry(boleto, today);
+                                if (boleto.status() != BoletoStatus.EMITIDO) {
+                                    return Optional.empty();
+                                }
+                                recordChange(boleto, target, "API");
+                                return Optional.of(Snapshot.from(boleto, today));
+                            });
+                    return changed.orElseThrow(BoletoFailure.INVALID_STATE_TRANSITION::exception);
+                });
     }
 
     public Snapshot expire(UUID id) {
@@ -82,10 +89,12 @@ public class BoletoLifecycle {
 
     private void materializeExpiry(Boleto boleto, LocalDate today) {
         if (boleto.status() != boleto.status().effective(boleto.dueDate(), today)) {
-            telemetry.observe("lifecycle.expire", () -> {
-                recordChange(boleto, BoletoStatus.VENCIDO, "SYSTEM");
-                return null;
-            });
+            telemetry.observe(
+                    "lifecycle.expire",
+                    () -> {
+                        recordChange(boleto, BoletoStatus.VENCIDO, "SYSTEM");
+                        return null;
+                    });
         }
     }
 

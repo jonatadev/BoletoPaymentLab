@@ -33,17 +33,28 @@ class BoletoEventConsumer {
         } catch (JacksonException exception) {
             throw new IllegalArgumentException("Malformed boleto event");
         }
-        if (event == null || event.eventId() == null || event.aggregateId() == null
-                || event.timestamp() == null || event.version() != 1 || event.aggregateVersion() < 0
+        if (event == null
+                || event.eventId() == null
+                || event.aggregateId() == null
+                || event.timestamp() == null
+                || event.version() != 1
+                || event.aggregateVersion() < 0
                 || !BoletoEventType.supports(event.eventType())
-                || event.correlationId() == null || event.correlationId().isBlank()) {
+                || event.correlationId() == null
+                || event.correlationId().isBlank()) {
             throw new IllegalArgumentException("Unsupported boleto event");
         }
-        int inserted = jdbc.sql("""
-                insert into processed_boleto_event (event_id, aggregate_id, event_type, processed_at)
-                values (:event, :aggregate, :type, :now) on conflict (event_id) do nothing
-                """).param("event", event.eventId()).param("aggregate", event.aggregateId())
-                .param("type", event.eventType()).param("now", clock.instant().atOffset(ZoneOffset.UTC)).update();
+        int inserted =
+                jdbc.sql(
+                                """
+                                insert into processed_boleto_event (event_id, aggregate_id, event_type, processed_at)
+                                values (:event, :aggregate, :type, :now) on conflict (event_id) do nothing
+                                """)
+                        .param("event", event.eventId())
+                        .param("aggregate", event.aggregateId())
+                        .param("type", event.eventType())
+                        .param("now", clock.instant().atOffset(ZoneOffset.UTC))
+                        .update();
         if (inserted == 0) {
             telemetry.count("events.duplicates");
         }

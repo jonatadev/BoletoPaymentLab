@@ -26,8 +26,7 @@ class BoletoStatusTests {
     void shouldRejectFurtherChangesToATerminalState() {
         var boleto = new Boleto(UUID.randomUUID(), "synthetic", BigDecimal.TEN, due, Instant.EPOCH);
         boleto.transitionTo(BoletoStatus.PAGO);
-        assertThatThrownBy(() -> boleto.transitionTo(BoletoStatus.CANCELADO))
-                .isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> boleto.transitionTo(BoletoStatus.CANCELADO)).isInstanceOf(IllegalStateException.class);
         assertThat(boleto.status()).isEqualTo(BoletoStatus.PAGO);
         assertThat(boleto.dueDate()).isEqualTo(due);
     }

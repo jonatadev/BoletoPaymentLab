@@ -82,9 +82,11 @@ class BoletoEventsPostgresTests extends PostgresIntegrationTest {
         properties.add("bpl.events.enabled", () -> true);
         properties.add("bpl.events.poll-delay", () -> "1h");
         properties.add("bpl.events.topic", () -> TOPIC);
-        properties.add("spring.kafka.consumer.group-id",
+        properties.add(
+                "spring.kafka.consumer.group-id",
                 () -> SECURE_KAFKA == null ? "boleto-it-" + RUN : "boleto-lab-educational");
-        properties.add("spring.kafka.bootstrap-servers",
+        properties.add(
+                "spring.kafka.bootstrap-servers",
                 () -> SECURE_KAFKA == null ? KAFKA.getBootstrapServers() : SECURE_KAFKA);
         if (SECURE_KAFKA == null) {
             properties.add("spring.kafka.properties[security.protocol]", () -> "PLAINTEXT");
@@ -93,51 +95,77 @@ class BoletoEventsPostgresTests extends PostgresIntegrationTest {
 
     @Test
     void shouldRecoverPendingEventsAfterTransportFailureAndDeduplicateDelivery() throws Exception {
-        var original = service.issue("outbox-test", new IssuanceInput(
-                "customer-outbox", new BigDecimal("12.34"), LocalDate.now(clock).plusDays(1))).boleto();
+        var original =
+                service.issue(
+                                "outbox-test",
+                                new IssuanceInput(
+                                        "customer-outbox", new BigDecimal("12.34"), LocalDate.now(clock).plusDays(1)))
+                        .boleto();
         lifecycle.change(original.id(), BoletoStatus.PAGO);
         assertThat(relay.processOne()).isFalse();
-        assertThat(jdbc.sql("select count(*) from boleto_outbox where published_at is null")
-                .query(Integer.class).single()).isEqualTo(2);
-        assertThat(jdbc.sql("select attempts from boleto_outbox where event_type = 'BOLETO_ISSUED'")
-                .query(Integer.class).single()).isEqualTo(1);
+        assertThat(
+                        jdbc.sql("select count(*) from boleto_outbox where published_at is null")
+                                .query(Integer.class)
+                                .single())
+                .isEqualTo(2);
+        assertThat(
+                        jdbc.sql("select attempts from boleto_outbox where event_type = 'BOLETO_ISSUED'")
+                                .query(Integer.class)
+                                .single())
+                .isEqualTo(1);
         jdbc.sql("update boleto_outbox set next_attempt_at = :due")
-                .param("due", clock.instant().minusSeconds(1).atOffset(ZoneOffset.UTC)).update();
+                .param("due", clock.instant().minusSeconds(1).atOffset(ZoneOffset.UTC))
+                .update();
         await().atMost(Duration.ofSeconds(45)).until(relay::processOne);
         await().atMost(Duration.ofSeconds(45)).until(relay::processOne);
         assertThat(transport.sent).extracting(BoletoEvent::eventType).containsExactly("BOLETO_ISSUED", "BOLETO_PAID");
-        assertThat(jdbc.sql("select count(*) from boleto_outbox where published_at is not null")
-                .query(Integer.class).single()).isEqualTo(2);
+        assertThat(
+                        jdbc.sql("select count(*) from boleto_outbox where published_at is not null")
+                                .query(Integer.class)
+                                .single())
+                .isEqualTo(2);
         var event = transport.sent.getFirst();
-        await().atMost(Duration.ofSeconds(20)).untilAsserted(() ->
-                assertThat(receipts(event.eventId())).isEqualTo(1));
+        await().atMost(Duration.ofSeconds(20)).untilAsserted(() -> assertThat(receipts(event.eventId())).isEqualTo(1));
         var duplicates = meters.counter("bpl.events.duplicates");
         double duplicatesBeforeReplay = duplicates.count();
         transport.delegate.publish(event, null);
-        await().atMost(Duration.ofSeconds(20)).untilAsserted(() ->
-                assertThat(duplicates.count()).isGreaterThan(duplicatesBeforeReplay));
+        await().atMost(Duration.ofSeconds(20))
+                .untilAsserted(() -> assertThat(duplicates.count()).isGreaterThan(duplicatesBeforeReplay));
         assertThat(receipts(event.eventId())).isEqualTo(1);
         assertThat(meters.counter("bpl.events.duplicates").count()).isEqualTo(1);
 
-        var held = service.issue("outbox-held", new IssuanceInput(
-                "customer-held", new BigDecimal("2.00"), LocalDate.now(clock).plusDays(1))).boleto();
-        var free = service.issue("outbox-free", new IssuanceInput(
-                "customer-free", new BigDecimal("3.00"), LocalDate.now(clock).plusDays(1))).boleto();
+        var held =
+                service.issue(
+                                "outbox-held",
+                                new IssuanceInput(
+                                        "customer-held", new BigDecimal("2.00"), LocalDate.now(clock).plusDays(1)))
+                        .boleto();
+        var free =
+                service.issue(
+                                "outbox-free",
+                                new IssuanceInput(
+                                        "customer-free", new BigDecimal("3.00"), LocalDate.now(clock).plusDays(1)))
+                        .boleto();
         var locked = new CountDownLatch(1);
         var release = new CountDownLatch(1);
-        var worker = CompletableFuture.runAsync(() -> new TransactionTemplate(transactions).executeWithoutResult(tx -> {
-            jdbc.sql("select event_id from boleto_outbox where aggregate_id = :id for update")
-                    .param("id", held.id()).query(UUID.class).single();
-            locked.countDown();
-            try {
-                if (!release.await(15, TimeUnit.SECONDS)) {
-                    throw new AssertionError("Timed out waiting for the competing relay");
-                }
-            } catch (InterruptedException exception) {
-                Thread.currentThread().interrupt();
-                throw new AssertionError(exception);
-            }
-        }));
+        var worker =
+                CompletableFuture.runAsync(() ->
+                        new TransactionTemplate(transactions)
+                                .executeWithoutResult(tx -> {
+                                    jdbc.sql("select event_id from boleto_outbox where aggregate_id = :id for update")
+                                            .param("id", held.id())
+                                            .query(UUID.class)
+                                            .single();
+                                    locked.countDown();
+                                    try {
+                                        if (!release.await(15, TimeUnit.SECONDS)) {
+                                            throw new AssertionError("Timed out waiting for the competing relay");
+                                        }
+                                    } catch (InterruptedException exception) {
+                                        Thread.currentThread().interrupt();
+                                        throw new AssertionError(exception);
+                                    }
+                                }));
         try {
             assertThat(locked.await(10, TimeUnit.SECONDS)).isTrue();
             assertThat(relay.processOne()).isTrue();
@@ -152,12 +180,15 @@ class BoletoEventsPostgresTests extends PostgresIntegrationTest {
 
     private int receipts(UUID eventId) {
         return jdbc.sql("select count(*) from processed_boleto_event where event_id = :id")
-                .param("id", eventId).query(Integer.class).single();
+                .param("id", eventId)
+                .query(Integer.class)
+                .single();
     }
 
     @TestConfiguration(proxyBeanMethods = false)
     static class TestBeans {
-        @Bean @Primary
+        @Bean
+        @Primary
         ControlledTransport controlledTransport(KafkaOutboxTransport delegate) {
             return new ControlledTransport(delegate);
         }

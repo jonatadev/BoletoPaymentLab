@@ -9,12 +9,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 
 class BoletoEventTypeTests {
     @ParameterizedTest
-    @CsvSource({
-        "EMITIDO, BOLETO_ISSUED",
-        "PAGO, BOLETO_PAID",
-        "VENCIDO, BOLETO_EXPIRED",
-        "CANCELADO, BOLETO_CANCELED"
-    })
+    @CsvSource({"EMITIDO, BOLETO_ISSUED", "PAGO, BOLETO_PAID", "VENCIDO, BOLETO_EXPIRED", "CANCELADO, BOLETO_CANCELED"})
     void shouldKeepThePublishedAndAcceptedEventName(BoletoStatus status, String wireValue) {
         assertThat(BoletoEventType.fromStatus(status).wireValue()).isEqualTo(wireValue);
         assertThat(BoletoEventType.supports(wireValue)).isTrue();

@@ -38,12 +38,20 @@ class BoletoErrorHandler {
             case INVALID_REQUEST -> invalidRequest();
             case BOLETO_NOT_FOUND -> problem(HttpStatus.NOT_FOUND, code, "Boleto was not found.", null);
             case REVISION_NOT_FOUND -> problem(HttpStatus.NOT_FOUND, code, "Boleto revision was not found.", null);
-            case IDEMPOTENCY_CONFLICT -> problem(HttpStatus.CONFLICT, code,
-                    "The key is associated with a different request.", null);
-            case OPERATION_IN_PROGRESS -> problem(HttpStatus.CONFLICT, code,
-                    "Issuance is in progress. Retry after the indicated delay.", "1");
-            case INVALID_STATE_TRANSITION -> problem(HttpStatus.CONFLICT, code,
-                    "The requested transition is not valid for the current state.", null);
+            case IDEMPOTENCY_CONFLICT ->
+                    problem(HttpStatus.CONFLICT, code, "The key is associated with a different request.", null);
+            case OPERATION_IN_PROGRESS ->
+                    problem(
+                            HttpStatus.CONFLICT,
+                            code,
+                            "Issuance is in progress. Retry after the indicated delay.",
+                            "1");
+            case INVALID_STATE_TRANSITION ->
+                    problem(
+                            HttpStatus.CONFLICT,
+                            code,
+                            "The requested transition is not valid for the current state.",
+                            null);
             case PDF_RENDER_FAILED -> {
                 LOGGER.warn("PDF_RENDER_FAILED");
                 yield problem(HttpStatus.INTERNAL_SERVER_ERROR, code, "Could not render the document.", null);
@@ -51,18 +59,25 @@ class BoletoErrorHandler {
         };
     }
 
-    @ExceptionHandler({HttpMessageNotReadableException.class, MethodArgumentTypeMismatchException.class,
-            DateTimeParseException.class})
+    @ExceptionHandler({
+        HttpMessageNotReadableException.class,
+        MethodArgumentTypeMismatchException.class,
+        DateTimeParseException.class
+    })
     ResponseEntity<ProblemDetail> invalidRequest() {
         return problem(HttpStatus.BAD_REQUEST, "INVALID_REQUEST", "The request is invalid.", null);
     }
 
-    @ExceptionHandler({CannotCreateTransactionException.class, DataAccessResourceFailureException.class,
-            PessimisticLockingFailureException.class, QueryTimeoutException.class})
+    @ExceptionHandler({
+        CannotCreateTransactionException.class,
+        DataAccessResourceFailureException.class,
+        PessimisticLockingFailureException.class,
+        QueryTimeoutException.class
+    })
     ResponseEntity<ProblemDetail> databaseUnavailable() {
         LOGGER.warn("DATABASE_UNAVAILABLE");
-        return problem(HttpStatus.SERVICE_UNAVAILABLE, "DATABASE_UNAVAILABLE",
-                "Database is temporarily unavailable.", null);
+        return problem(
+                HttpStatus.SERVICE_UNAVAILABLE, "DATABASE_UNAVAILABLE", "Database is temporarily unavailable.", null);
     }
 
     private ResponseEntity<ProblemDetail> problem(HttpStatus status, String code, String detail, String retryAfter) {

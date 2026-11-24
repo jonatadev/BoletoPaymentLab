@@ -9,15 +9,16 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 public class BoletoRevisionListener implements RevisionListener {
     @Override
     public void newRevision(Object revision) {
-        ((BoletoRevision) revision).attribute(BoletoAuditing.actor(),
-                correlation().orElseGet(() -> UUID.randomUUID().toString()));
+        ((BoletoRevision) revision)
+                .attribute(BoletoAuditing.actor(), correlation().orElseGet(() -> UUID.randomUUID().toString()));
     }
 
     public static String correlate(String candidate) {
-        return correlation().orElseGet(() -> {
-            TransactionSynchronizationManager.registerSynchronization(new Correlation(candidate));
-            return candidate;
-        });
+        return correlation()
+                .orElseGet(() -> {
+                    TransactionSynchronizationManager.registerSynchronization(new Correlation(candidate));
+                    return candidate;
+                });
     }
 
     private static Optional<String> correlation() {

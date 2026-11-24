@@ -16,23 +16,25 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class AnalyticsServiceTests {
-    @Mock
-    private AnalyticsRepository repository;
+    @Mock private AnalyticsRepository repository;
 
     @Test
     void shouldCalculateSummaryAverageAndStatusPercentages() {
         LocalDate start = LocalDate.of(2026, 2, 1);
         LocalDate end = LocalDate.of(2026, 2, 10);
         when(repository.totals(start, end)).thenReturn(new AnalyticsRepository.Totals(4, new BigDecimal("100.00")));
-        when(repository.statuses(start, end)).thenReturn(List.of(
-                new AnalyticsRepository.StatusAggregate("EMITIDO", 3, new BigDecimal("70.00")),
-                new AnalyticsRepository.StatusAggregate("PAGO", 1, new BigDecimal("30.00"))));
+        when(repository.statuses(start, end))
+                .thenReturn(
+                        List.of(
+                                new AnalyticsRepository.StatusAggregate("EMITIDO", 3, new BigDecimal("70.00")),
+                                new AnalyticsRepository.StatusAggregate("PAGO", 1, new BigDecimal("30.00"))));
 
         var service = service();
         var summary = service.summary(new AnalyticsModels.DateRangeInput(start, end));
 
         assertThat(summary.averageAmount()).isEqualByComparingTo("25.00");
-        assertThat(summary.statuses()).extracting(AnalyticsModels.StatusSummary::percentage)
+        assertThat(summary.statuses())
+                .extracting(AnalyticsModels.StatusSummary::percentage)
                 .extracting(BigDecimal::stripTrailingZeros)
                 .containsExactly(new BigDecimal("75"), new BigDecimal("25"));
     }
@@ -50,8 +52,8 @@ class AnalyticsServiceTests {
 
     private AnalyticsService service() {
         var properties = new AnalyticsProperties("analytics", "issuer", "jwks", 30, 366, 5);
-        var ranges = new AnalyticsDateRanges(Clock.fixed(Instant.parse("2026-02-10T12:00:00Z"), ZoneOffset.UTC),
-                properties);
+        var ranges =
+                new AnalyticsDateRanges(Clock.fixed(Instant.parse("2026-02-10T12:00:00Z"), ZoneOffset.UTC), properties);
         return new AnalyticsService(repository, ranges);
     }
 }

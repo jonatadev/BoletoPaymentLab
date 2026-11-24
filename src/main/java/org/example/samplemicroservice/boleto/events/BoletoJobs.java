@@ -24,7 +24,10 @@ class BoletoJobs {
     private final boolean expiryEnabled;
     private final boolean eventsEnabled;
 
-    BoletoJobs(BoletoLifecycle lifecycle, OutboxRelay outbox, BoletoTelemetry telemetry,
+    BoletoJobs(
+            BoletoLifecycle lifecycle,
+            OutboxRelay outbox,
+            BoletoTelemetry telemetry,
             @Value("${bpl.expiry.enabled}") boolean expiryEnabled,
             @Value("${bpl.events.enabled}") boolean eventsEnabled) {
         this.lifecycle = lifecycle;
@@ -41,7 +44,10 @@ class BoletoJobs {
         }
     }
 
-    @Scheduled(fixedDelayString = "${bpl.expiry.delay}", initialDelayString = "${bpl.expiry.delay}", scheduler = "taskScheduler")
+    @Scheduled(
+            fixedDelayString = "${bpl.expiry.delay}",
+            initialDelayString = "${bpl.expiry.delay}",
+            scheduler = "taskScheduler")
     void expire() {
         if (expiryEnabled) {
             for (var id : lifecycle.dueForExpiry()) {
@@ -54,7 +60,9 @@ class BoletoJobs {
         }
     }
 
-    @Scheduled(fixedDelayString = "${bpl.events.poll-delay}", initialDelayString = "${bpl.events.poll-delay}",
+    @Scheduled(
+            fixedDelayString = "${bpl.events.poll-delay}",
+            initialDelayString = "${bpl.events.poll-delay}",
             scheduler = "taskScheduler")
     void publish() {
         if (eventsEnabled) {
@@ -72,8 +80,9 @@ class BoletoJobs {
     DefaultErrorHandler boletoConsumerErrors() {
         var backoff = new ExponentialBackOff(1000, 2.0);
         backoff.setMaxInterval(30_000);
-        var handler = new DefaultErrorHandler((record, exception) -> LOGGER.warn("Unsupported boleto event rejected"),
-                backoff);
+        var handler =
+                new DefaultErrorHandler(
+                        (record, exception) -> LOGGER.warn("Unsupported boleto event rejected"), backoff);
         handler.addNotRetryableExceptions(IllegalArgumentException.class);
         return handler;
     }

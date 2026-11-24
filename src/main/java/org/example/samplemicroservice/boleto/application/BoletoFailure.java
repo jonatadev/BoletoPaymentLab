@@ -21,6 +21,8 @@ public enum BoletoFailure {
             this.failure = failure;
         }
 
-        public BoletoFailure failure() { return failure; }
+        public BoletoFailure failure() {
+            return failure;
+        }
     }
 }

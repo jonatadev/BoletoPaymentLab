@@ -13,8 +13,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
  */
 public abstract class PostgresIntegrationTest {
     private static final Set<String> DATABASES = new HashSet<>();
-    protected static final PostgreSQLContainer POSTGRES =
-            new PostgreSQLContainer("postgres:16.11-alpine");
+    protected static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:16.11-alpine");
 
     static {
         POSTGRES.start();
@@ -26,16 +25,23 @@ public abstract class PostgresIntegrationTest {
             throw new IllegalArgumentException("Invalid test database name");
         }
         if (!DATABASES.contains(schema)) {
-            try (var connection = DriverManager.getConnection(POSTGRES.getJdbcUrl(), postgresUser(),
-                    postgresPassword()); var statement = connection.createStatement()) {
+            try (var connection =
+                            DriverManager.getConnection(POSTGRES.getJdbcUrl(), postgresUser(), postgresPassword());
+                    var statement = connection.createStatement()) {
                 statement.execute("CREATE DATABASE " + schema);
                 DATABASES.add(schema);
             } catch (SQLException failure) {
                 throw new IllegalStateException("Cannot create isolated PostgreSQL test database", failure);
             }
         }
-        return "jdbc:postgresql://" + POSTGRES.getHost() + ":" + POSTGRES.getMappedPort(5432)
-                + "/" + schema + "?currentSchema=" + schema;
+        return "jdbc:postgresql://"
+                + POSTGRES.getHost()
+                + ":"
+                + POSTGRES.getMappedPort(5432)
+                + "/"
+                + schema
+                + "?currentSchema="
+                + schema;
     }
 
     protected static String postgresUser() {

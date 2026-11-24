@@ -27,15 +27,18 @@ class OutboxAuditMigrationTests extends PostgresIntegrationTest {
             assertThat(flyway().migrate().migrationsExecuted).isEqualTo(4);
             flyway().validate();
             try (var statement = connection.createStatement()) {
-                assertThatThrownBy(() -> statement.executeUpdate("""
-                        update boleto_outbox set aggregate_id =
-                            (select id from boleto where customer_id = 'other-synthetic')
-                        """)).isInstanceOfSatisfying(SQLException.class, failure ->
-                        assertThat(failure.getSQLState()).isEqualTo("23503"));
+                assertThatThrownBy(() ->
+                                statement.executeUpdate(
+                                        """
+                                        update boleto_outbox set aggregate_id =
+                                            (select id from boleto where customer_id = 'other-synthetic')
+                                        """))
+                        .isInstanceOfSatisfying(
+                                SQLException.class, failure -> assertThat(failure.getSQLState()).isEqualTo("23503"));
             }
             assertThatThrownBy(() -> insertOutbox(connection, 1, 2))
-                    .isInstanceOfSatisfying(SQLException.class, failure ->
-                            assertThat(failure.getSQLState()).isEqualTo("23503"));
+                    .isInstanceOfSatisfying(
+                            SQLException.class, failure -> assertThat(failure.getSQLState()).isEqualTo("23503"));
             assertThat(insertOutbox(connection, 1, 1)).isEqualTo(1);
         }
     }
@@ -52,14 +55,16 @@ class OutboxAuditMigrationTests extends PostgresIntegrationTest {
                     .hasStackTraceContaining("fk_boleto_outbox_audit_identity");
 
             try (var statement = connection.createStatement();
-                    var row = statement.executeQuery("""
-                            select
-                                (select count(*) from pg_constraint
-                                 where conrelid in ('boleto_audit'::regclass, 'boleto_outbox'::regclass)
-                                   and conname in ('uq_boleto_audit_event_identity',
-                                                   'fk_boleto_outbox_audit_identity')) as constraints,
-                                (select aggregate_version from boleto_outbox) as legacy_version
-                            """)) {
+                    var row =
+                            statement.executeQuery(
+                                    """
+                                    select
+                                        (select count(*) from pg_constraint
+                                         where conrelid in ('boleto_audit'::regclass, 'boleto_outbox'::regclass)
+                                           and conname in ('uq_boleto_audit_event_identity',
+                                                           'fk_boleto_outbox_audit_identity')) as constraints,
+                                        (select aggregate_version from boleto_outbox) as legacy_version
+                                    """)) {
                 assertThat(row.next()).isTrue();
                 assertThat(row.getInt("constraints")).isZero();
                 assertThat(row.getLong("legacy_version")).isEqualTo(2);
@@ -72,18 +77,23 @@ class OutboxAuditMigrationTests extends PostgresIntegrationTest {
     }
 
     private Flyway flyway() {
-        return Flyway.configure().dataSource(url, user, password).schemas(schema)
-                .locations("classpath:db/migration", "classpath:db/vendor/postgresql").load();
+        return Flyway.configure()
+                .dataSource(url, user, password)
+                .schemas(schema)
+                .locations("classpath:db/migration", "classpath:db/vendor/postgresql")
+                .load();
     }
 
     private static void seedAudits(Connection connection) throws SQLException {
         try (var statement = connection.createStatement()) {
-            statement.executeUpdate("""
+            statement.executeUpdate(
+                    """
                     insert into boleto (id, customer_id, amount, due_date)
                     values (gen_random_uuid(), 'audit-synthetic', 10.00, '2035-08-30'),
                            (gen_random_uuid(), 'other-synthetic', 10.00, '2035-08-30')
                     """);
-            statement.executeUpdate("""
+            statement.executeUpdate(
+                    """
                     insert into boleto_audit
                         (event_id, boleto_id, event_type, occurred_at, source, previous_status, new_status,
                          aggregate_version, correlation_id)
@@ -99,13 +109,15 @@ class OutboxAuditMigrationTests extends PostgresIntegrationTest {
     }
 
     private static int insertOutbox(Connection connection, long auditVersion, long outboxVersion) throws SQLException {
-        try (var statement = connection.prepareStatement("""
-                insert into boleto_outbox
-                    (event_id, aggregate_id, event_type, occurred_at, aggregate_version, correlation_id,
-                     next_attempt_at)
-                select event_id, boleto_id, event_type, occurred_at, ?, correlation_id, occurred_at
-                from boleto_audit where aggregate_version = ?
-                """)) {
+        try (var statement =
+                connection.prepareStatement(
+                        """
+                        insert into boleto_outbox
+                            (event_id, aggregate_id, event_type, occurred_at, aggregate_version, correlation_id,
+                             next_attempt_at)
+                        select event_id, boleto_id, event_type, occurred_at, ?, correlation_id, occurred_at
+                        from boleto_audit where aggregate_version = ?
+                        """)) {
             statement.setLong(1, outboxVersion);
             statement.setLong(2, auditVersion);
             return statement.executeUpdate();

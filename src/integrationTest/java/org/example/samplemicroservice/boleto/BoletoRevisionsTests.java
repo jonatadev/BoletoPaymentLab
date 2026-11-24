@@ -27,8 +27,13 @@ class BoletoRevisionsTests {
     @Test
     void shouldAuditOnlyCommittedWritesAndRejectStaleUpdates() {
         UUID id = UUID.randomUUID();
-        boletos.saveAndFlush(new Boleto(id, "synthetic-customer", BigDecimal.TEN,
-                LocalDate.of(2099, 1, 1), Instant.parse("2026-01-01T00:00:00Z")));
+        boletos.saveAndFlush(
+                new Boleto(
+                        id,
+                        "synthetic-customer",
+                        BigDecimal.TEN,
+                        LocalDate.of(2099, 1, 1),
+                        Instant.parse("2026-01-01T00:00:00Z")));
         Boleto stale = boletos.findById(id).orElseThrow();
 
         var initial = revisions.list(id, null, 20).getFirst();
@@ -47,8 +52,7 @@ class BoletoRevisionsTests {
         });
         assertThat(revisions.list(id, null, 20)).containsExactly(initial);
 
-        transaction.executeWithoutResult(status ->
-                boletos.findById(id).orElseThrow().transitionTo(BoletoStatus.PAGO));
+        transaction.executeWithoutResult(status -> boletos.findById(id).orElseThrow().transitionTo(BoletoStatus.PAGO));
         var history = revisions.list(id, null, 20);
         assertThat(history).hasSize(2);
         var paid = revisions.detail(id, history.getFirst().revision()).state();

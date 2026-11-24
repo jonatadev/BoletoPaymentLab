@@ -9,5 +9,4 @@ public record AnalyticsProperties(
         String authJwks,
         int defaultPeriodDays,
         int maximumPeriodDays,
-        int databaseQueryTimeoutSeconds) {
-}
+        int databaseQueryTimeoutSeconds) {}

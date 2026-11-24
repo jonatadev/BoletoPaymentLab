@@ -8,8 +8,8 @@ import org.example.samplemicroservice.boleto.application.BoletoDocuments;
 import org.example.samplemicroservice.boleto.application.BoletoFailure;
 import org.example.samplemicroservice.boleto.application.BoletoLifecycle;
 import org.example.samplemicroservice.boleto.application.BoletoQueries;
-import org.example.samplemicroservice.boleto.application.BoletoService;
 import org.example.samplemicroservice.boleto.application.BoletoRevisions;
+import org.example.samplemicroservice.boleto.application.BoletoService;
 import org.example.samplemicroservice.boleto.application.BoletoTelemetry;
 import org.example.samplemicroservice.boleto.application.Snapshot;
 import org.example.samplemicroservice.boleto.domain.BoletoStatus;
@@ -39,8 +39,13 @@ public class BoletoController {
     private final BoletoQueries queries;
     private final BoletoRevisions revisions;
 
-    public BoletoController(BoletoService service, BoletoDocuments documents, BoletoTelemetry telemetry,
-            BoletoLifecycle lifecycle, BoletoQueries queries, BoletoRevisions revisions) {
+    public BoletoController(
+            BoletoService service,
+            BoletoDocuments documents,
+            BoletoTelemetry telemetry,
+            BoletoLifecycle lifecycle,
+            BoletoQueries queries,
+            BoletoRevisions revisions) {
         this.service = service;
         this.documents = documents;
         this.telemetry = telemetry;
@@ -55,12 +60,12 @@ public class BoletoController {
         if (keys == null || keys.size() != 1 || keys.getFirst().contains(",")) {
             throw BoletoFailure.INVALID_REQUEST.exception();
         }
-        var result = telemetry.observe("issuance", () ->
-                service.issue(keys.getFirst(), IssueBoletoRequest.from(json).toInput()));
+        var result =
+                telemetry.observe(
+                        "issuance", () -> service.issue(keys.getFirst(), IssueBoletoRequest.from(json).toInput()));
         if (result.created()) {
             telemetry.count("boletos.issued");
-            return ResponseEntity.created(URI.create("/api/v1/boletos/" + result.boleto().id()))
-                    .body(result.boleto());
+            return ResponseEntity.created(URI.create("/api/v1/boletos/" + result.boleto().id())).body(result.boleto());
         }
         return ResponseEntity.ok(result.boleto());
     }
@@ -71,7 +76,8 @@ public class BoletoController {
     }
 
     @GetMapping
-    BoletoQueries.PageResult list(@RequestParam(required = false) String customerId,
+    BoletoQueries.PageResult list(
+            @RequestParam(required = false) String customerId,
             @RequestParam(required = false) BoletoStatus status,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
@@ -97,7 +103,8 @@ public class BoletoController {
     }
 
     @GetMapping("/{id}/revisions")
-    List<BoletoRevisions.Metadata> revisions(@PathVariable String id,
+    List<BoletoRevisions.Metadata> revisions(
+            @PathVariable String id,
             @RequestParam(required = false) Long before,
             @RequestParam(defaultValue = "20") int size) {
         return revisions.list(parseId(id), before, size);
@@ -109,16 +116,18 @@ public class BoletoController {
     }
 
     @GetMapping("/{id}/revisions/compare")
-    BoletoRevisions.Comparison compareRevisions(@PathVariable String id,
-            @RequestParam long from, @RequestParam long to) {
+    BoletoRevisions.Comparison compareRevisions(
+            @PathVariable String id, @RequestParam long from, @RequestParam long to) {
         return revisions.compare(parseId(id), from, to);
     }
 
     @GetMapping(value = "/{id}/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
     ResponseEntity<byte[]> pdf(@PathVariable String id) {
         UUID boletoId = parseId(id);
-        return ResponseEntity.ok().contentType(MediaType.APPLICATION_PDF)
-                .header(HttpHeaders.CONTENT_DISPOSITION,
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(
+                        HttpHeaders.CONTENT_DISPOSITION,
                         ContentDisposition.attachment().filename("boleto-" + boletoId + ".pdf").toString())
                 .body(documents.render(boletoId));
     }

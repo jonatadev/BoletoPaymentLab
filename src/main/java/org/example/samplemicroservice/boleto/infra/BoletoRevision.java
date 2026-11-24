@@ -37,8 +37,19 @@ public class BoletoRevision {
         this.correlationId = correlationId;
     }
 
-    public long id() { return id; }
-    public Instant timestamp() { return Instant.ofEpochMilli(revisedAt); }
-    public String actor() { return actor; }
-    public String correlationId() { return correlationId; }
+    public long id() {
+        return id;
+    }
+
+    public Instant timestamp() {
+        return Instant.ofEpochMilli(revisedAt);
+    }
+
+    public String actor() {
+        return actor;
+    }
+
+    public String correlationId() {
+        return correlationId;
+    }
 }
