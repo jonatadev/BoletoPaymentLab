@@ -19,10 +19,13 @@ title: Testes e validação
 | `LegacyDatabaseUpgradeTests` | Migração V1–V5 no PostgreSQL com um registro preexistente. |
 | `OutboxAuditMigrationTests` | Migração V4–V5 com eventos legados, rejeição de relações divergentes e rollback do DDL nos cenários S17–S19. |
 
-As suítes de PostgreSQL e Kafka usam Testcontainers e exigem apenas um daemon
-Docker acessível. Cada execução usa um esquema isolado `bpl_it_*` e tópico/grupo
-Kafka próprios. A consulta opcional de trace ainda requer `BPL_IT_JAEGER_QUERY`
-e `BPL_IT_JAEGER_OTLP` quando um Jaeger local estiver disponível.
+As suítes de PostgreSQL e Kafka usam Testcontainers e exigem um daemon
+Docker acessível. Os bancos e esquemas `bpl_it_*` são criados no PostgreSQL
+descartável. O Kafka de Testcontainers usa tópico e grupo próprios.
+Consulte a [arquitetura de testes](./arquitetura-de-testes.md#containers-e-assincronia)
+para o ciclo de vida dos contêineres e o isolamento do banco de desenvolvimento.
+A consulta opcional de trace ainda requer `BPL_IT_JAEGER_QUERY` e
+`BPL_IT_JAEGER_OTLP` quando um Jaeger local estiver disponível.
 
 ## Cobertura de testes
 
