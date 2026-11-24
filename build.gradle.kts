@@ -1,8 +1,11 @@
+import com.diffplug.gradle.spotless.SpotlessExtension
+
 plugins {
     java
     jacoco
     id("org.springframework.boot") version "4.2.0"
     id("io.spring.dependency-management") version "1.1.7"
+    id("com.diffplug.spotless") version "8.12.0" apply false
 }
 
 jacoco {
@@ -100,5 +103,27 @@ tasks.jacocoTestReport {
         xml.required.set(true)
         html.required.set(true)
         csv.required.set(false)
+    }
+}
+
+configure(listOf(rootProject, project(":boleto-analytics-mcp"))) {
+    pluginManager.apply("com.diffplug.spotless")
+    // Wildcard expansion reads the compile classpaths of the declared source sets.
+    afterEvaluate {
+        extensions.configure<SpotlessExtension> {
+            java {
+                target("src/main/java/**/*.java", "src/test/java/**/*.java", "src/integrationTest/java/**/*.java")
+                expandWildcardImports()
+                shortenFullyQualifiedTypes()
+                removeUnusedImports()
+                importOrder("#", "")
+                forbidWildcardImports()
+                googleJavaFormat("2.0.0").aosp()
+                    .maxLineLength(120)
+                    .reorderImports(false)
+                    .skipJavadocFormatting()
+                    .cleanup(false)
+            }
+        }
     }
 }

@@ -245,6 +245,11 @@ this release.
 
 ## Run tests
 
+Check Java formatting with `./gradlew spotlessCheck` or fix it with
+`./gradlew spotlessApply`. On Windows, use `.\gradlew.bat`. Gradle `check`
+also verifies formatting for the API and MCP. See the
+[formatting and IntelliJ IDEA guide](docs-site/docs/inicio/cobertura.md#formatação-java).
+
 Run `./gradlew test` (or `gradlew.bat test` on Windows). Run
 `./gradlew integrationTest` with Docker to exercise PostgreSQL and Kafka.
 The integration suite creates isolated databases and uses an isolated
@@ -302,7 +307,7 @@ database and platform settings through environment variables. Production
 deployments must supply sensitive values through the platform secret manager
 or an equivalent controlled mechanism, not through repository files.
 
-Run `./gradlew test jacocoTestReport` before submitting a change. GitHub
+Run `./gradlew check jacocoTestReport` before submitting a change. GitHub
 Actions uploads coverage only when the repository is connected to Codecov and
 the `CODECOV_TOKEN` GitHub Actions secret is configured. Fork pull requests
 never receive that secret. Rotate a credential immediately if it is exposed
