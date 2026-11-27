@@ -41,6 +41,7 @@ dependencies {
     implementation("org.apache.pdfbox:pdfbox:3.0.8")
     compileOnly("org.projectlombok:lombok")
     developmentOnly("org.springframework.boot:spring-boot-devtools")
+    runtimeOnly("io.micrometer:micrometer-registry-prometheus")
     runtimeOnly("com.h2database:h2")
     runtimeOnly("org.postgresql:postgresql")
     annotationProcessor("org.projectlombok:lombok")

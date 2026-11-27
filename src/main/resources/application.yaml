@@ -100,6 +100,10 @@ bpl:
     audience: ${BPL_OIDC_AUDIENCE:boleto-api}
 
 management:
+  prometheus:
+    metrics:
+      export:
+        enabled: false
   otlp:
     metrics:
       export:

@@ -1,0 +1,22 @@
+# Active, idle, and pending HikariCP connections
+hikaricp_connections_active{job="boleto-payment-lab"}
+hikaricp_connections_idle{job="boleto-payment-lab"}
+hikaricp_connections_pending{job="boleto-payment-lab"}
+
+# HikariCP pool limits
+hikaricp_connections_min{job="boleto-payment-lab"}
+hikaricp_connections_max{job="boleto-payment-lab"}
+
+# Connection acquisition average
+rate(hikaricp_connections_acquire_seconds_sum{job="boleto-payment-lab"}[5m])
+/
+clamp_min(
+  rate(hikaricp_connections_acquire_seconds_count{job="boleto-payment-lab"}[5m]),
+  1
+)
+
+# Connection acquisition max
+hikaricp_connections_acquire_seconds_max{job="boleto-payment-lab"}
+
+# Connection timeout rate
+rate(hikaricp_connections_timeout_total{job="boleto-payment-lab"}[5m])

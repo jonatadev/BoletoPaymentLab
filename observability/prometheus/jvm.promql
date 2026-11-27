@@ -1,0 +1,18 @@
+# Service availability
+up{job="boleto-payment-lab"}
+
+# JVM used and max memory
+jvm_memory_used_bytes{job="boleto-payment-lab"}
+jvm_memory_max_bytes{job="boleto-payment-lab"}
+
+# JVM live and daemon threads
+jvm_threads_live_threads{job="boleto-payment-lab"}
+jvm_threads_daemon_threads{job="boleto-payment-lab"}
+
+# GC pause p95
+histogram_quantile(
+  0.95,
+  sum by (le) (
+    rate(jvm_gc_pause_seconds_bucket{job="boleto-payment-lab"}[5m])
+  )
+)

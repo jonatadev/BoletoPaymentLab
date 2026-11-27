@@ -63,7 +63,8 @@ class BoletoSecurity {
                                     "/actuator/health/liveness",
                                     "/actuator/health/readiness")
                             .permitAll()
-                            .requestMatchers(HttpMethod.GET, "/actuator/metrics", "/actuator/metrics/*")
+                            .requestMatchers(
+                                    HttpMethod.GET, "/actuator/metrics", "/actuator/metrics/*", "/actuator/prometheus")
                             .hasAuthority("SCOPE_ops:metrics")
                             .requestMatchers(HttpMethod.POST, BOLETOS)
                             .hasAuthority("SCOPE_boletos:issue")

@@ -1,0 +1,18 @@
+# Consumer active connections
+kafka_consumer_connection_count{job="boleto-payment-lab"}
+
+# Assigned partitions
+kafka_consumer_coordinator_assigned_partitions{job="boleto-payment-lab"}
+
+# Consumer records consumed
+rate(kafka_consumer_fetch_manager_records_consumed_total{job="boleto-payment-lab"}[5m])
+
+# Consumer records lag
+kafka_consumer_fetch_manager_records_lag{job="boleto-payment-lab"}
+
+# Consumer commit rate
+rate(kafka_consumer_coordinator_commit_total{job="boleto-payment-lab"}[5m])
+
+# Failed authentication and rebalance totals
+kafka_consumer_failed_authentication_total{job="boleto-payment-lab"}
+kafka_consumer_coordinator_failed_rebalance_total{job="boleto-payment-lab"}

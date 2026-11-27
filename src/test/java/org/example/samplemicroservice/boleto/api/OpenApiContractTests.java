@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.actuate.endpoint.web.WebEndpointsSupplier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.test.web.servlet.MockMvc;
@@ -22,6 +23,14 @@ import org.yaml.snakeyaml.Yaml;
 @AutoConfigureMockMvc
 class OpenApiContractTests {
     @Autowired private MockMvc mvc;
+
+    @Autowired private WebEndpointsSupplier endpoints;
+
+    @Test
+    void shouldKeepPrometheusUnexposedByDefault() {
+        assertThat(endpoints.getEndpoints())
+                .noneMatch(endpoint -> endpoint.getEndpointId().toString().equals("prometheus"));
+    }
 
     @Test
     void shouldServeSwaggerUiWithoutOpeningProtectedRoutes() throws Exception {
