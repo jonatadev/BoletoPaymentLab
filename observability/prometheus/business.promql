@@ -1,0 +1,31 @@
+# Issued, paid, and cancelled boletos
+rate(bpl_boletos_issued_total{job="boleto-payment-lab"}[5m])
+rate(bpl_boletos_paid_total{job="boleto-payment-lab"}[5m])
+rate(bpl_boletos_cancelled_total{job="boleto-payment-lab"}[5m])
+
+# Issuance duration p95
+histogram_quantile(
+  0.95,
+  sum by (le) (
+    rate(bpl_issuance_seconds_bucket{job="boleto-payment-lab"}[5m])
+  )
+)
+
+# PDF rendering duration p95
+histogram_quantile(
+  0.95,
+  sum by (le) (
+    rate(bpl_pdf_render_seconds_bucket{job="boleto-payment-lab"}[5m])
+  )
+)
+
+# Outbox backlog
+bpl_outbox_pending{job="boleto-payment-lab"}
+
+# Outbox publish and error rates
+rate(bpl_outbox_published_total{job="boleto-payment-lab"}[5m])
+rate(bpl_outbox_errors_total{job="boleto-payment-lab"}[5m])
+
+# Idempotency conflicts and duplicate events
+rate(bpl_idempotency_conflicts_total{job="boleto-payment-lab"}[5m])
+rate(bpl_events_duplicates_total{job="boleto-payment-lab"}[5m])

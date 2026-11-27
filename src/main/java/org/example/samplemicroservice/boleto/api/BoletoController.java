@@ -56,15 +56,20 @@ public class BoletoController {
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     ResponseEntity<Snapshot> issue(@RequestHeader HttpHeaders headers, @RequestBody JsonNode json) {
-        List<String> keys = headers.get("Idempotency-Key");
-        if (keys == null || keys.size() != 1 || keys.getFirst().contains(",")) {
-            throw BoletoFailure.INVALID_REQUEST.exception();
-        }
         var result =
                 telemetry.observe(
-                        "issuance", () -> service.issue(keys.getFirst(), IssueBoletoRequest.from(json).toInput()));
+                        "issuance",
+                        () -> {
+                            List<String> keys = headers.get("Idempotency-Key");
+                            if (keys == null || keys.size() != 1 || keys.getFirst().contains(",")) {
+                                throw BoletoFailure.INVALID_REQUEST.exception();
+                            }
+                            var input =
+                                    telemetry.observe(
+                                            "issuance.validate", () -> IssueBoletoRequest.from(json).toInput());
+                            return service.issue(keys.getFirst(), input);
+                        });
         if (result.created()) {
-            telemetry.count("boletos.issued");
             return ResponseEntity.created(URI.create("/api/v1/boletos/" + result.boleto().id())).body(result.boleto());
         }
         return ResponseEntity.ok(result.boleto());

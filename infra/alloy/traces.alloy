@@ -1,0 +1,72 @@
+otelcol.receiver.otlp "application" {
+  http {
+    endpoint = "0.0.0.0:4318"
+  }
+  output {
+    traces = [otelcol.processor.batch.traces.input]
+  }
+}
+
+otelcol.processor.batch "traces" {
+  timeout = "1s"
+  send_batch_size = 256
+  send_batch_max_size = 512
+  output {
+    traces = [otelcol.exporter.otlphttp.jaeger.input, otelcol.processor.transform.cloud.input]
+  }
+}
+
+// Keep operational attributes; exclude request data, SQL, Kafka keys and exception details.
+otelcol.processor.transform "cloud" {
+  trace_statements {
+    context = "resource"
+    statements = [`keep_keys(attributes, ["service.name", "service.version", "telemetry.sdk.language"])`]
+  }
+  trace_statements {
+    context = "span"
+    statements = [
+      `keep_keys(attributes, ["operation", "outcome", "http.method", "http.request.method", "http.route", "http.status_code", "http.response.status_code", "messaging.system", "messaging.operation.type"])`,
+      `set(status.message, "")`,
+    ]
+  }
+  trace_statements {
+    context = "spanevent"
+    statements = [`keep_keys(attributes, [])`]
+  }
+  output {
+    traces = [otelcol.exporter.otlphttp.tempo.input]
+  }
+}
+
+otelcol.exporter.otlphttp "jaeger" {
+  client {
+    endpoint = "http://jaeger:4318"
+    timeout = "5s"
+  }
+  sending_queue {
+    queue_size = 128
+    num_consumers = 2
+  }
+}
+
+otelcol.auth.basic "tempo" {
+  username = sys.env("GRAFANA_CLOUD_OTLP_USER")
+  password = sys.env("GRAFANA_CLOUD_TRACES_TOKEN")
+}
+
+otelcol.exporter.otlphttp "tempo" {
+  client {
+    endpoint = "https://" + sys.env("GRAFANA_CLOUD_OTLP_HOST") + "/otlp"
+    auth = otelcol.auth.basic.tempo.handler
+    timeout = "5s"
+  }
+  sending_queue {
+    queue_size = 128
+    num_consumers = 2
+  }
+  retry_on_failure {
+    initial_interval = "1s"
+    max_interval = "15s"
+    max_elapsed_time = "2m"
+  }
+}

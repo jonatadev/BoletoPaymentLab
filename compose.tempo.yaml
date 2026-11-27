@@ -1,0 +1,15 @@
+# Combine with compose.yaml and compose.alloy.yaml.
+services:
+  boleto-payment-lab:
+    environment:
+      BPL_OTLP_ENDPOINT: http://alloy:4318/v1/traces
+  alloy:
+    command: [run, --storage.path=/var/lib/alloy/data, /etc/bpl-alloy]
+    ports:
+      - "127.0.0.1:${ALLOY_OTLP_PORT:-14318}:4318"
+    environment:
+      GRAFANA_CLOUD_OTLP_HOST: ${GRAFANA_CLOUD_OTLP_HOST:?Set the stack OTLP gateway hostname}
+      GRAFANA_CLOUD_OTLP_USER: ${GRAFANA_CLOUD_OTLP_USER:?Set the OTLP instance ID}
+      GRAFANA_CLOUD_TRACES_TOKEN: ${GRAFANA_CLOUD_TRACES_TOKEN:?Set a traces:write access policy token}
+    volumes:
+      - ./infra/alloy:/etc/bpl-alloy:ro

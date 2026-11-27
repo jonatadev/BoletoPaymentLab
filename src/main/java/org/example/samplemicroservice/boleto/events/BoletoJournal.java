@@ -9,6 +9,7 @@ import java.time.ZoneOffset;
 import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
+import org.example.samplemicroservice.boleto.application.BoletoTelemetry;
 import org.example.samplemicroservice.boleto.domain.BoletoStatus;
 import org.example.samplemicroservice.boleto.infra.Boleto;
 import org.example.samplemicroservice.boleto.infra.BoletoRevisionListener;
@@ -21,14 +22,29 @@ public class BoletoJournal {
     private final JdbcClient jdbc;
     private final ObjectProvider<Tracer> tracer;
     private final ObjectProvider<Propagator> propagator;
+    private final BoletoTelemetry telemetry;
 
-    BoletoJournal(JdbcClient jdbc, ObjectProvider<Tracer> tracer, ObjectProvider<Propagator> propagator) {
+    BoletoJournal(
+            JdbcClient jdbc,
+            ObjectProvider<Tracer> tracer,
+            ObjectProvider<Propagator> propagator,
+            BoletoTelemetry telemetry) {
         this.jdbc = jdbc;
         this.tracer = tracer;
         this.propagator = propagator;
+        this.telemetry = telemetry;
     }
 
     public void record(Boleto boleto, BoletoStatus previous, String source, Instant time) {
+        telemetry.observe(
+                "outbox.append",
+                () -> {
+                    append(boleto, previous, source, time);
+                    return null;
+                });
+    }
+
+    private void append(Boleto boleto, BoletoStatus previous, String source, Instant time) {
         UUID eventId = UUID.randomUUID();
         String eventType = BoletoEventType.fromStatus(boleto.status()).wireValue();
         var activeTracer = tracer.getIfAvailable();

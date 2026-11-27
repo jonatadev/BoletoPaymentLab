@@ -115,6 +115,7 @@ public class BoletoService {
                                             now));
                     issuances.saveAndFlush(new IdempotentIssuance(input.customerId(), OPERATION, key, boleto));
                     journal.record(boleto, null, "API", now);
+                    telemetry.countAfterCommit("boletos.issued");
                     return new IssueResult(Snapshot.from(boleto, LocalDate.now(clock)), true);
                 });
     }

@@ -1,0 +1,32 @@
+services:
+  boleto-payment-lab:
+    environment:
+      SPRING_PROFILES_ACTIVE: platform,observability
+      BPL_OIDC_ISSUER: http://127.0.0.1:${KEYCLOAK_PORT:-8180}/realms/boleto-lab
+      BPL_OIDC_JWKS: http://keycloak:8080/realms/boleto-lab/protocol/openid-connect/certs
+
+  alloy:
+    profiles: [app]
+    image: grafana/alloy:v1.22.0
+    command:
+      - run
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+    environment:
+      BPL_METRICS_CLIENT_SECRET: ${BPL_METRICS_CLIENT_SECRET:?Set the local boleto-metrics client secret}
+      GRAFANA_CLOUD_PROM_HOST: ${GRAFANA_CLOUD_PROM_HOST:?Set the Grafana Cloud Prometheus hostname}
+      GRAFANA_CLOUD_PROM_USER: ${GRAFANA_CLOUD_PROM_USER:?Set the metrics instance ID}
+      GRAFANA_CLOUD_METRICS_TOKEN: ${GRAFANA_CLOUD_METRICS_TOKEN:?Set a new metrics:write token}
+    depends_on:
+      boleto-payment-lab:
+        condition: service_started
+      keycloak:
+        condition: service_started
+    volumes:
+      - ./observability/alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - alloy-data:/var/lib/alloy/data
+    mem_limit: 384m
+    restart: unless-stopped
+
+volumes:
+  alloy-data:

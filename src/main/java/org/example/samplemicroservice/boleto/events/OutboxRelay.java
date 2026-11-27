@@ -38,11 +38,6 @@ class OutboxRelay {
 
     boolean processOne() {
         var outcome = transactions.execute(status -> sendNext());
-        if (outcome == Outcome.PUBLISHED) {
-            telemetry.count("outbox.published");
-        } else if (outcome == Outcome.DEFERRED) {
-            telemetry.count("outbox.errors");
-        }
         return outcome == Outcome.PUBLISHED;
     }
 
@@ -95,6 +90,7 @@ class OutboxRelay {
                     .param("id", pending.event().eventId())
                     .update();
             LOGGER.warn("Outbox publication deferred");
+            telemetry.countAfterCommit("outbox.errors");
             return Outcome.DEFERRED;
         }
 
@@ -102,6 +98,7 @@ class OutboxRelay {
                 .param("now", now())
                 .param("id", pending.event().eventId())
                 .update();
+        telemetry.countAfterCommit("outbox.published");
         return Outcome.PUBLISHED;
     }
 
