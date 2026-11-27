@@ -8,6 +8,7 @@ This directory is the versioned observability configuration for BoletoPaymentLab
 - `grafana/dashboards/application-overview.json` - application health and runtime dashboard.
 - `grafana/dashboards/business-metrics.json` - boleto and Outbox business dashboard.
 - `alloy/config.alloy` - the existing Grafana Alloy scrape and remote-write configuration.
+- `alloy/traces.alloy` - the optional OTLP pipeline for Jaeger and Tempo.
 - `docs/metrics.md` - metric inventory and label reference.
 
 The dashboards use the Grafana variable `$datasource` and require Prometheus data
@@ -49,7 +50,8 @@ to the repository.
 
 `observability/alloy/config.alloy` preserves the existing scrape and remote-write
 behavior. The Docker Compose volume in `compose.alloy.yaml` points to this
-versioned copy. Credentials continue to be supplied through environment
+versioned file. The Tempo overlay loads the same file together with
+`traces.alloy`. Credentials continue to be supplied through environment
 variables from `.env`, which is ignored by Git.
 
 ## Validation

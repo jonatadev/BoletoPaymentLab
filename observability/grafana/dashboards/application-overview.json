@@ -73,7 +73,7 @@
       "datasource": {"type": "prometheus", "uid": "$datasource"},
       "fieldConfig": {"defaults": {"color": {"mode": "continuous-RdYlGr"}, "custom": {"axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "drawStyle": "line", "fillOpacity": 10, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5, "showPoints": "never", "spanNulls": false, "stacking": {"group": "A", "mode": "none"}, "thresholdsStyle": {"mode": "line"}}, "mappings": [], "max": 1, "min": 0, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 0.05}]}, "unit": "percentunit"}, "overrides": []},
       "options": {"legend": {"calcs": ["lastNotNull"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
-      "targets": [{"datasource": {"type": "prometheus", "uid": "$datasource"}, "editorMode": "code", "expr": "sum(rate(http_server_requests_seconds_count{job=\"boleto-payment-lab\",status=~\"5..\"}[5m])) / clamp_min(sum(rate(http_server_requests_seconds_count{job=\"boleto-payment-lab\"}[5m])), 1)", "legendFormat": "5xx ratio", "range": true, "refId": "A"}]
+      "targets": [{"datasource": {"type": "prometheus", "uid": "$datasource"}, "editorMode": "code", "expr": "(sum(rate(http_server_requests_seconds_count{job=\"boleto-payment-lab\",status=~\"5..\"}[5m])) or 0 * sum(rate(http_server_requests_seconds_count{job=\"boleto-payment-lab\"}[5m]))) / (sum(rate(http_server_requests_seconds_count{job=\"boleto-payment-lab\"}[5m])) > 0)", "legendFormat": "5xx ratio", "range": true, "refId": "A"}]
     },
     {
       "type": "timeseries",

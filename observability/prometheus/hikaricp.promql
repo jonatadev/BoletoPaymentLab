@@ -10,9 +10,8 @@ hikaricp_connections_max{job="boleto-payment-lab"}
 # Connection acquisition average
 rate(hikaricp_connections_acquire_seconds_sum{job="boleto-payment-lab"}[5m])
 /
-clamp_min(
-  rate(hikaricp_connections_acquire_seconds_count{job="boleto-payment-lab"}[5m]),
-  1
+(
+  rate(hikaricp_connections_acquire_seconds_count{job="boleto-payment-lab"}[5m]) > 0
 )
 
 # Connection acquisition max
