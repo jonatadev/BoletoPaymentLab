@@ -12,4 +12,4 @@ services:
       GRAFANA_CLOUD_OTLP_USER: ${GRAFANA_CLOUD_OTLP_USER:?Set the OTLP instance ID}
       GRAFANA_CLOUD_TRACES_TOKEN: ${GRAFANA_CLOUD_TRACES_TOKEN:?Set a traces:write access policy token}
     volumes:
-      - ./infra/alloy:/etc/bpl-alloy:ro
+      - ./observability/alloy:/etc/bpl-alloy:ro
