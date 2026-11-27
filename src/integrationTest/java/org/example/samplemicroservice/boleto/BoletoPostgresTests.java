@@ -4,7 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -43,6 +45,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -50,6 +53,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.ObjectMapper;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@ActiveProfiles("observability")
 @Import(BoletoPostgresTests.TestBeans.class)
 @ExtendWith(OutputCaptureExtension.class)
 class BoletoPostgresTests extends PostgresIntegrationTest {
@@ -59,6 +63,7 @@ class BoletoPostgresTests extends PostgresIntegrationTest {
     private static IntegrationIdentity identity;
     private static String allPermissions;
     private final HttpClient client = HttpClient.newHttpClient();
+    @Autowired private MeterRegistry meters;
     @Autowired private ObjectMapper json;
     @Autowired private MutableClock clock;
     @Autowired private ControlledRenderer renderer;
@@ -98,6 +103,65 @@ class BoletoPostgresTests extends PostgresIntegrationTest {
         clock.time.set(ISSUE_TIME);
         renderer.calls.set(0);
         renderer.fail = false;
+    }
+
+    @Test
+    void shouldSecureScrapesAndMeasureOnlyCommittedTransitions() throws Exception {
+        var scrape = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/actuator/prometheus"));
+        assertThat(client.send(scrape.GET().build(), HttpResponse.BodyHandlers.discarding()).statusCode())
+                .isEqualTo(401);
+        scrape.setHeader("Authorization", "Bearer " + identity.token("boletos:read", "boleto-api"));
+        assertThat(client.send(scrape.build(), HttpResponse.BodyHandlers.discarding()).statusCode()).isEqualTo(403);
+        var issued = meters.counter("bpl.boletos.issued");
+        var paid = meters.counter("bpl.boletos.paid");
+        var cancelled = meters.counter("bpl.boletos.cancelled");
+        double before = issued.count(), beforePaid = paid.count(), beforeCancelled = cancelled.count();
+        var pending = meters.get("bpl.outbox.pending").gauge();
+        double backlog = pending.value();
+        new TransactionTemplate(transactions)
+                .executeWithoutResult(tx -> {
+                    service.issue(key(), new IssuanceInput("metrics-rollback", BigDecimal.ONE, DUE_DATE));
+                    tx.setRollbackOnly();
+                });
+        assertThat(issued.count()).isEqualTo(before);
+        String key = key();
+        String payload = body("metrics-synthetic", "10", DUE_DATE);
+        var first = post(key, payload);
+        assertThat(first.statusCode()).isEqualTo(201);
+        assertThat(post(key, payload).statusCode()).isEqualTo(200);
+        String id = field(first, "id");
+        var pay = request("/" + id + "/payments").POST(HttpRequest.BodyPublishers.noBody()).build();
+        assertThat(client.send(pay, HttpResponse.BodyHandlers.discarding()).statusCode()).isEqualTo(200);
+        assertThat(client.send(pay, HttpResponse.BodyHandlers.discarding()).statusCode()).isEqualTo(409);
+        assertThat(paid.count()).isEqualTo(beforePaid + 1);
+        assertThat(issued.count()).isEqualTo(before + 1);
+        assertThat(get("/" + id + "/pdf").statusCode()).isEqualTo(200);
+        String second = field(post(key(), payload), "id");
+        var cancel = request("/" + second + "/cancellations").POST(HttpRequest.BodyPublishers.noBody()).build();
+        assertThat(client.send(cancel, HttpResponse.BodyHandlers.discarding()).statusCode()).isEqualTo(200);
+        assertThat(cancelled.count()).isEqualTo(beforeCancelled + 1);
+        assertThat(pending.value()).isEqualTo(backlog + 4);
+        scrape.setHeader("Authorization", "Bearer " + identity.token("ops:metrics", "boleto-api"));
+        var response = client.send(scrape.build(), HttpResponse.BodyHandlers.ofString());
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(response.body())
+                .contains(
+                        "bpl_boletos_issued_total",
+                        "bpl_boletos_paid_total",
+                        "bpl_boletos_cancelled_total",
+                        "bpl_outbox_pending",
+                        "bpl_issuance_seconds_bucket",
+                        "bpl_pdf_render_seconds_bucket",
+                        "http_server_requests_seconds_bucket",
+                        "status=\"201\"",
+                        "jvm_memory_used_bytes",
+                        "jvm_gc_memory_allocated_bytes_total",
+                        "process_uptime_seconds",
+                        "process_cpu_usage",
+                        "hikaricp_connections_active",
+                        "outcome=\"failure\"",
+                        "operation=\"payment\"")
+                .doesNotContain("metrics-synthetic", id, key);
     }
 
     @Test
@@ -334,8 +398,7 @@ class BoletoPostgresTests extends PostgresIntegrationTest {
                 new TransactionTemplate(transactions)
                         .execute(status -> {
                             var result =
-                                    service.issue(
-                                            key, new IssuanceInput(customer, new java.math.BigDecimal("10"), DUE_DATE));
+                                    service.issue(key, new IssuanceInput(customer, new BigDecimal("10"), DUE_DATE));
                             hold.countDown();
                             try {
                                 if (!release.await(20, TimeUnit.SECONDS)) {

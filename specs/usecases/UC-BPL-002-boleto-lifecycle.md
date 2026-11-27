@@ -53,6 +53,12 @@ at-least-once across PostgreSQL and Kafka.
 | S18 | Kafka failure leaves a committed event pending. Retrying after availability publishes it without replaying the boleto command. |
 | S19 | Repeat Kafka delivery of one event creates one processed receipt. |
 | S20 | Missing or invalid JWT returns 401, insufficient scopes return 403, and an authorized request succeeds. |
-| S21 | A traced request correlates logs and spans. API success is independent of an unavailable OTLP exporter. |
+| S21 | In the observability profile, Prometheus scraping requires ops:metrics. Count committed issuances, payments and cancellations once per transition. Replays, rejected transitions and rolled-back writes do not increase completion counters. Expose operation timings and the unpublished outbox backlog without identifiers. A traced request correlates logs and spans. API success is independent of an unavailable OTLP exporter. |
 
 See [S22–S25](../boleto-revisions.md) for technical entity revisions.
+
+S21 distributed tracing also covers a synthetic HTTP issuance. Follow its sampled
+W3C trace through persistence, the committed outbox record, Kafka publication and
+the listener's processed receipt. With the optional Tempo overlay the API exports
+once to Alloy. Independent exporters forward traces to local Jaeger and the
+stack's authenticated OTLP gateway. Metrics retain their Prometheus path.

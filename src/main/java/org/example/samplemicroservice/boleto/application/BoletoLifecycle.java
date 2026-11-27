@@ -54,6 +54,7 @@ public class BoletoLifecycle {
     public Snapshot change(UUID id, BoletoStatus target) {
         return telemetry.observe(
                 "lifecycle.change",
+                target == BoletoStatus.PAGO ? "payment" : "cancellation",
                 () -> {
                     Optional<Snapshot> changed =
                             transactions.execute(transaction -> {
@@ -103,5 +104,10 @@ public class BoletoLifecycle {
         boleto.transitionTo(target);
         boletos.flush();
         journal.record(boleto, previous, source, clock.instant());
+        if (target == BoletoStatus.PAGO) {
+            telemetry.countAfterCommit("boletos.paid");
+        } else if (target == BoletoStatus.CANCELADO) {
+            telemetry.countAfterCommit("boletos.cancelled");
+        }
     }
 }

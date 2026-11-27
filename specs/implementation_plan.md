@@ -39,7 +39,7 @@ suite. Preserve the S01–S13 regression cases.
 | S14–S17 | `BoletoStatusTests` and `BoletoPostgresTests` cover terminal states, effective expiry, filters and atomic audit. |
 | S18–S19 | `BoletoEventsPostgresTests` injects a failed publication, proves durable recovery and deduplicates repeat delivery. The broker run also tests competing PostgreSQL locks. |
 | S20 | `BoletoPostgresTests` exercises signed JWTs against a local test JWKS endpoint, invalid tokens and denied scopes. |
-| S21 | `BoletoPostgresTests` confirms log correlation and success during exporter errors. With Jaeger configured, it finds the trace through the Jaeger query API. |
+| S21 | `BoletoPostgresTests` confirms log correlation and success during exporter errors. The observability profile also verifies authorized Prometheus scrapes, committed counters, rollback, replay, histogram names and backlog. `OpenApiContractTests` checks default exposure and `BoletoEventsPostgresTests` checks producer, consumer and relay metrics. With Jaeger configured, the suite finds the trace through the Jaeger query API. |
 | Incremental migration | `LegacyDatabaseUpgradeTests` upgrades a PostgreSQL schema containing a V1 row and validates V1–V5. |
 | S17–S19 database invariant | `OutboxAuditMigrationTests` upgrades populated V4, verifies the V5 composite foreign key and confirms transactional rollback when legacy rows diverge. |
 
@@ -63,3 +63,17 @@ suite. Preserve the S01–S13 regression cases.
   and PostgreSQL. `IssuanceInputTests` covers precision and normalization
   for S02 and S07. The integration suite runs only when configured with a
   PostgreSQL URL.
+
+## Optional metrics collector (RNF-BPL-003/004, UC-BPL-002 S20/S21)
+
+The optional Alloy Compose overlay requests short-lived tokens as the metrics
+client and scrapes only the protected Prometheus endpoint. It forwards samples
+over HTTPS using an independent write-only Cloud credential. Check the merged
+Compose model, Alloy configuration and the fresh `up` series in the target
+stack. Jaeger remains the local trace destination.
+
+For S21, `IssuanceTraceTests` sends a sampled HTTP request to the real test
+application and correlates its 201 response, published outbox row, Kafka listener
+and persisted receipt with the parent references in Jaeger. Configure
+`BPL_IT_ALLOY_OTLP` for this test. Verify the cloud copy independently in Tempo
+by the same trace ID when stack credentials are available.

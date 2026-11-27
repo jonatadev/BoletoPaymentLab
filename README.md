@@ -313,3 +313,12 @@ the `CODECOV_TOKEN` GitHub Actions secret is configured. Fork pull requests
 never receive that secret. Rotate a credential immediately if it is exposed
 outside the approved secret store, then update the affected local or platform
 configuration.
+
+## Optional Grafana Cloud metrics
+
+Use the [Alloy setup guide](docs-site/docs/operacao/observabilidade.md#conectar-o-compose-ao-grafana-cloud)
+to enable authenticated Prometheus scraping and remote write with the additional
+Compose file. The default stack runs independently of the collector.
+
+For trace fan-out, add `compose.tempo.yaml` after the Alloy overlay. See
+[Jaeger and Tempo setup and Kafka trace verification](docs-site/docs/operacao/observabilidade.md#enviar-o-mesmo-trace-ao-jaeger-e-ao-tempo).

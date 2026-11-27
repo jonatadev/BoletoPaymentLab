@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.prometheusmetrics.PrometheusMeterRegistry;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Duration;
@@ -31,6 +32,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -39,6 +41,7 @@ import org.testcontainers.kafka.KafkaContainer;
 import org.testcontainers.utility.DockerImageName;
 import tools.jackson.databind.ObjectMapper;
 
+@ActiveProfiles("observability")
 @SpringBootTest
 @Import(BoletoEventsPostgresTests.TestBeans.class)
 class BoletoEventsPostgresTests extends PostgresIntegrationTest {
@@ -70,6 +73,7 @@ class BoletoEventsPostgresTests extends PostgresIntegrationTest {
     @Autowired private Clock clock;
     @Autowired private ObjectMapper json;
     @Autowired private MeterRegistry meters;
+    @Autowired private PrometheusMeterRegistry prometheus;
     @Autowired private PlatformTransactionManager transactions;
 
     @DynamicPropertySource
@@ -124,6 +128,13 @@ class BoletoEventsPostgresTests extends PostgresIntegrationTest {
                                 .query(Integer.class)
                                 .single())
                 .isEqualTo(2);
+        var scrape = prometheus.scrape();
+        assertThat(scrape)
+                .contains(
+                        "kafka_producer_record_send_total",
+                        "kafka_consumer_fetch_manager_records_consumed_total",
+                        "bpl_outbox_published_total",
+                        "bpl_outbox_errors_total");
         var event = transport.sent.getFirst();
         await().atMost(Duration.ofSeconds(20)).untilAsserted(() -> assertThat(receipts(event.eventId())).isEqualTo(1));
         var duplicates = meters.counter("bpl.events.duplicates");

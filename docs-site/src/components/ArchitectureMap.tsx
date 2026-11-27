@@ -19,9 +19,16 @@ const components = [
   {id: 'mcp-client', label: 'Cliente MCP', kind: 'Cliente', x: 0, y: 635, path: '/operacao/mcp-analytics', detail: 'Envia chamadas Streamable HTTP autenticadas ao endpoint /mcp.'},
   {id: 'mcp', label: 'MCP analítico', kind: 'Análise', x: 240, y: 635, path: '/operacao/mcp-analytics', detail: 'Processo separado. Valida JWT e analytics:read e consulta somente as views analíticas do PostgreSQL.'},
   {id: 'mcp-oidc', label: 'Keycloak isolado', kind: 'Identidade', x: 500, y: 765, path: '/operacao/mcp-analytics#como-conectar-o-boleto-analytics-mcp-ao-chatgpt', detail: 'Serviço opcional do overlay ChatGPT. Publica o issuer HTTPS por meio do proxy OAuth restrito.'},
+  {id: 'alloy', label: 'Grafana Alloy', kind: 'Observabilidade', x: 0, y: -155, path: '/operacao/observabilidade#conectar-o-compose-ao-grafana-cloud', detail: 'Coletor opcional. Renova o JWT no Keycloak, coleta as métricas da API e mantém um WAL local.'},
+  {id: 'grafanacloud', label: 'Grafana Cloud', kind: 'Observabilidade', x: 240, y: -155, path: '/operacao/observabilidade#conectar-o-compose-ao-grafana-cloud', detail: 'Recebe as amostras por Prometheus remote write sobre HTTPS.'},
 ];
 
 const connections = [
+  ['alloy', 'oidc', 'OAuth2 · ops:metrics'],
+  ['alloy', 'api', 'Scrape Prometheus'],
+  ['alloy', 'grafanacloud', 'Remote write · OTLP/HTTPS (Tempo)'],
+  ['api', 'alloy', 'OTLP/HTTP · overlay Tempo'],
+  ['alloy', 'jaeger', 'OTLP/HTTP · cópia local'],
   ['client', 'oidc', 'OAuth2 HTTP'],
   ['client', 'api', 'HTTP + Bearer JWT'],
   ['api', 'oidc', 'JWKS HTTP'],
