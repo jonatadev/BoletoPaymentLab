@@ -10,6 +10,12 @@ sum(rate(http_server_requests_seconds_count{job="boleto-payment-lab",uri=~"/api/
 # Boleto API p95 latency
 histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{job="boleto-payment-lab",uri=~"/api/v1/boletos(/.*)?"}[5m])))
 
+# Boleto API 4xx rate by status
+sum by (status) (rate(http_server_requests_seconds_count{job="boleto-payment-lab",uri=~"/api/v1/boletos(/.*)?",status=~"4.."}[5m]))
+
+# Boleto API p95 by route
+histogram_quantile(0.95, sum by (le, uri) (rate(http_server_requests_seconds_bucket{job="boleto-payment-lab",uri=~"/api/v1/boletos(/.*)?"}[5m])))
+
 # Actuator Throughput
 sum by (method, uri, status) (rate(http_server_requests_seconds_count{job="boleto-payment-lab",uri=~"/actuator(/.*)?"}[5m]))
 

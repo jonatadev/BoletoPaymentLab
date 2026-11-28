@@ -49,6 +49,11 @@ Application Overview calculates throughput, the 5xx ratio and p95 latency
 separately for Boleto API routes (`/api/v1/boletos` and its subroutes) and
 Actuator routes (`/actuator` and its subroutes), using the recorded `uri`
 template. Unclassified routes fall outside both groups.
+The main HTTP panels show the Boleto API, including 4xx request rates by
+status code and p95 by route. The collapsed **Infra / Actuator** row contains
+the Actuator panels. Application Overview refreshes every minute and uses
+`$__rate_interval` with a 30-second query Min step matching the Alloy scrape
+interval. Standalone PromQL examples use a fixed five-minute window.
 The ratio and the HikariCP acquisition mean return no sample when their
 respective denominator has zero activity. If a different scrape configuration is
 used, keep the dashboard variable and update the query filter to the real job
