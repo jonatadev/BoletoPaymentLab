@@ -45,6 +45,10 @@ publishing that statistic and was absent in the idle local scrape.
 Grafana Alloy sets `job="boleto-payment-lab"` and scrapes
 `/actuator/prometheus` every 30 seconds. The collector produces `up`.
 The HTTP error ratio returns zero with traffic and no 5xx responses.
+Application Overview calculates throughput, the 5xx ratio and p95 latency
+separately for Boleto API routes (`/api/v1/boletos` and its subroutes) and
+Actuator routes (`/actuator` and its subroutes), using the recorded `uri`
+template. Unclassified routes fall outside both groups.
 The ratio and the HikariCP acquisition mean return no sample when their
 respective denominator has zero activity. If a different scrape configuration is
 used, keep the dashboard variable and update the query filter to the real job
