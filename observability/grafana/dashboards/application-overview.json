@@ -63,7 +63,11 @@
       "datasource": {"type": "prometheus", "uid": "$datasource"},
       "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "requests/s", "axisPlacement": "auto", "drawStyle": "line", "fillOpacity": 10, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5, "showPoints": "never", "spanNulls": false, "stacking": {"group": "A", "mode": "none"}, "thresholdsStyle": {"mode": "off"}}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "reqps"}, "overrides": []},
       "options": {"legend": {"calcs": ["lastNotNull"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
-      "targets": [{"datasource": {"type": "prometheus", "uid": "$datasource"}, "editorMode": "code", "expr": "sum by (method, uri, status) (rate(http_server_requests_seconds_count{job=\"boleto-payment-lab\"}[5m]))", "legendFormat": "{{method}} {{uri}} {{status}}", "range": true, "refId": "A"}]
+      "description": "Boleto API and Actuator are calculated separately from their recorded route templates.",
+      "targets": [
+        {"datasource": {"type": "prometheus", "uid": "$datasource"}, "editorMode": "code", "expr": "sum by (method, uri, status) (rate(http_server_requests_seconds_count{job=\"boleto-payment-lab\",uri=~\"/api/v1/boletos(/.*)?\"}[5m]))", "legendFormat": "Boleto API ? {{method}} {{uri}} {{status}}", "range": true, "refId": "A"},
+        {"datasource": {"type": "prometheus", "uid": "$datasource"}, "editorMode": "code", "expr": "sum by (method, uri, status) (rate(http_server_requests_seconds_count{job=\"boleto-payment-lab\",uri=~\"/actuator(/.*)?\"}[5m]))", "legendFormat": "Actuator ? {{method}} {{uri}} {{status}}", "range": true, "refId": "B"}
+      ]
     },
     {
       "type": "timeseries",
@@ -73,7 +77,11 @@
       "datasource": {"type": "prometheus", "uid": "$datasource"},
       "fieldConfig": {"defaults": {"color": {"mode": "continuous-RdYlGr"}, "custom": {"axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "drawStyle": "line", "fillOpacity": 10, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5, "showPoints": "never", "spanNulls": false, "stacking": {"group": "A", "mode": "none"}, "thresholdsStyle": {"mode": "line"}}, "mappings": [], "max": 1, "min": 0, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 0.05}]}, "unit": "percentunit"}, "overrides": []},
       "options": {"legend": {"calcs": ["lastNotNull"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
-      "targets": [{"datasource": {"type": "prometheus", "uid": "$datasource"}, "editorMode": "code", "expr": "(sum(rate(http_server_requests_seconds_count{job=\"boleto-payment-lab\",status=~\"5..\"}[5m])) or 0 * sum(rate(http_server_requests_seconds_count{job=\"boleto-payment-lab\"}[5m]))) / (sum(rate(http_server_requests_seconds_count{job=\"boleto-payment-lab\"}[5m])) > 0)", "legendFormat": "5xx ratio", "range": true, "refId": "A"}]
+      "description": "Boleto API and Actuator are calculated separately from their recorded route templates. The ratio is zero when that route group has traffic and no 5xx responses.",
+      "targets": [
+        {"datasource": {"type": "prometheus", "uid": "$datasource"}, "editorMode": "code", "expr": "(sum(rate(http_server_requests_seconds_count{job=\"boleto-payment-lab\",uri=~\"/api/v1/boletos(/.*)?\",status=~\"5..\"}[5m])) or 0 * sum(rate(http_server_requests_seconds_count{job=\"boleto-payment-lab\",uri=~\"/api/v1/boletos(/.*)?\"}[5m]))) / (sum(rate(http_server_requests_seconds_count{job=\"boleto-payment-lab\",uri=~\"/api/v1/boletos(/.*)?\"}[5m])) > 0)", "legendFormat": "Boleto API ? 5xx ratio", "range": true, "refId": "A"},
+        {"datasource": {"type": "prometheus", "uid": "$datasource"}, "editorMode": "code", "expr": "(sum(rate(http_server_requests_seconds_count{job=\"boleto-payment-lab\",uri=~\"/actuator(/.*)?\",status=~\"5..\"}[5m])) or 0 * sum(rate(http_server_requests_seconds_count{job=\"boleto-payment-lab\",uri=~\"/actuator(/.*)?\"}[5m]))) / (sum(rate(http_server_requests_seconds_count{job=\"boleto-payment-lab\",uri=~\"/actuator(/.*)?\"}[5m])) > 0)", "legendFormat": "Actuator ? 5xx ratio", "range": true, "refId": "B"}
+      ]
     },
     {
       "type": "timeseries",
@@ -83,7 +91,11 @@
       "datasource": {"type": "prometheus", "uid": "$datasource"},
       "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "drawStyle": "line", "fillOpacity": 10, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5, "showPoints": "never", "spanNulls": false, "stacking": {"group": "A", "mode": "none"}, "thresholdsStyle": {"mode": "off"}}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "s"}, "overrides": []},
       "options": {"legend": {"calcs": ["lastNotNull"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
-      "targets": [{"datasource": {"type": "prometheus", "uid": "$datasource"}, "editorMode": "code", "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{job=\"boleto-payment-lab\"}[5m])))", "legendFormat": "p95", "range": true, "refId": "A"}]
+      "description": "Boleto API and Actuator are calculated separately from their recorded route templates.",
+      "targets": [
+        {"datasource": {"type": "prometheus", "uid": "$datasource"}, "editorMode": "code", "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{job=\"boleto-payment-lab\",uri=~\"/api/v1/boletos(/.*)?\"}[5m])))", "legendFormat": "Boleto API ? p95", "range": true, "refId": "A"},
+        {"datasource": {"type": "prometheus", "uid": "$datasource"}, "editorMode": "code", "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{job=\"boleto-payment-lab\",uri=~\"/actuator(/.*)?\"}[5m])))", "legendFormat": "Actuator ? p95", "range": true, "refId": "B"}
+      ]
     }
   ],
   "refresh": "30s",

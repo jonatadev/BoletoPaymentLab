@@ -1,27 +1,23 @@
-# HTTP throughput
-sum by (method, uri, status) (
-  rate(http_server_requests_seconds_count{job="boleto-payment-lab"}[5m])
-)
+# Boleto API Throughput
+sum by (method, uri, status) (rate(http_server_requests_seconds_count{job="boleto-payment-lab",uri=~"/api/v1/boletos(/.*)?"}[5m]))
 
-# HTTP 5xx rate
-sum(
-  rate(http_server_requests_seconds_count{job="boleto-payment-lab",status=~"5.."}[5m])
-)
+# Boleto API 5xx rate
+sum(rate(http_server_requests_seconds_count{job="boleto-payment-lab",uri=~"/api/v1/boletos(/.*)?",status=~"5.."}[5m]))
 
-# HTTP error ratio
-(
-  sum(rate(http_server_requests_seconds_count{job="boleto-payment-lab",status=~"5.."}[5m]))
-  or 0 * sum(rate(http_server_requests_seconds_count{job="boleto-payment-lab"}[5m]))
-)
-/
-(
-  sum(rate(http_server_requests_seconds_count{job="boleto-payment-lab"}[5m])) > 0
-)
+# Boleto API 5xx ratio
+(sum(rate(http_server_requests_seconds_count{job="boleto-payment-lab",uri=~"/api/v1/boletos(/.*)?",status=~"5.."}[5m])) or 0 * sum(rate(http_server_requests_seconds_count{job="boleto-payment-lab",uri=~"/api/v1/boletos(/.*)?"}[5m]))) / (sum(rate(http_server_requests_seconds_count{job="boleto-payment-lab",uri=~"/api/v1/boletos(/.*)?"}[5m])) > 0)
 
-# HTTP p95 latency
-histogram_quantile(
-  0.95,
-  sum by (le) (
-    rate(http_server_requests_seconds_bucket{job="boleto-payment-lab"}[5m])
-  )
-)
+# Boleto API p95 latency
+histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{job="boleto-payment-lab",uri=~"/api/v1/boletos(/.*)?"}[5m])))
+
+# Actuator Throughput
+sum by (method, uri, status) (rate(http_server_requests_seconds_count{job="boleto-payment-lab",uri=~"/actuator(/.*)?"}[5m]))
+
+# Actuator 5xx rate
+sum(rate(http_server_requests_seconds_count{job="boleto-payment-lab",uri=~"/actuator(/.*)?",status=~"5.."}[5m]))
+
+# Actuator 5xx ratio
+(sum(rate(http_server_requests_seconds_count{job="boleto-payment-lab",uri=~"/actuator(/.*)?",status=~"5.."}[5m])) or 0 * sum(rate(http_server_requests_seconds_count{job="boleto-payment-lab",uri=~"/actuator(/.*)?"}[5m]))) / (sum(rate(http_server_requests_seconds_count{job="boleto-payment-lab",uri=~"/actuator(/.*)?"}[5m])) > 0)
+
+# Actuator p95 latency
+histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{job="boleto-payment-lab",uri=~"/actuator(/.*)?"}[5m])))
